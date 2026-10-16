@@ -148,8 +148,14 @@ std::optional<Order> SimulatedBroker::submit(const OrderRequest& request,
   if (venue_reject) {
     schedule(ActionKind::Reject, order_id, now_ns + config_.ack_latency_ns);
   } else {
+    // A fill can only happen after acknowledgement, so the fill action must
+    // never be due before the ack action even if the configured fill latency
+    // is shorter than the ack latency; otherwise the fill would be attempted
+    // while the order is still Submitted and silently dropped.
+    const std::int64_t fill_due =
+        now_ns + std::max(config_.fill_latency_ns, config_.ack_latency_ns);
     schedule(ActionKind::Ack, order_id, now_ns + config_.ack_latency_ns);
-    schedule(ActionKind::FillAttempt, order_id, now_ns + config_.fill_latency_ns);
+    schedule(ActionKind::FillAttempt, order_id, fill_due);
   }
   return find(order_id);
 }

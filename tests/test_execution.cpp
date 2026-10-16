@@ -174,6 +174,25 @@ VT_TEST(Broker, FillHappensAfterLatencyAtTheAsk) {
   VT_ASSERT_NEAR(broker.account().position, 100.0, 1e-9);
 }
 
+VT_TEST(Broker, FillAttemptBeforeAckIsNotDropped) {
+  // Regression: when the configured fill latency is shorter than the ack
+  // latency, the fill action becomes due before the order is acknowledged.
+  // The venue must still fill the order instead of silently dropping the
+  // action and leaving the order stuck in Acknowledged forever.
+  SimBrokerConfig config = instant_config();
+  config.ack_latency_ns = 100'000'000;   // 100 ms
+  config.fill_latency_ns = 10'000'000;   // 10 ms: sooner than the ack
+  SimulatedBroker broker(config);
+  broker.submit(buy_request("A-1", 100.0), 0);
+
+  // A single market event well after both latencies have elapsed.
+  broker.on_market(make_quote(1.10, 0.00010, 200'000'000, 1));
+
+  VT_ASSERT_EQ(broker.orders().front().state, OrderState::Filled);
+  VT_ASSERT_EQ(broker.fills().size(), std::size_t{1});
+  VT_ASSERT_NEAR(broker.account().position, 100.0, 1e-9);
+}
+
 VT_TEST(Broker, PartialFillLeavesOrderWorking) {
   SimBrokerConfig config = instant_config();
   config.partial_fill_probability = 1.0;

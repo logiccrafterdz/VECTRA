@@ -73,16 +73,16 @@ Execution model: fills occur against the next quote after the configured latency
 
 These results come from a synthetic replay. They are a **pipeline smoke test**, not evidence of an edge.
 
-## 6. Processing latency (steady_clock, microseconds)
+## 6. Latency (microseconds)
 
 | Stage | Median | p95 | p99 | Samples |
 |---|---|---|---|---|
-| Event processing | 0.4 | 0.6 | 0.7 | 5395 |
-| Signal calculation | 0.5 | 1.9 | 2.2 | 5395 |
-| Decision | 0.3 | 2.9 | 3.2 | 5395 |
-| Simulated order (submit to ack) | 100000.0 | 100000.0 | 100000.0 | 40 |
+| Event processing | 0.2 | 0.4 | 0.4 | 5395 |
+| Signal calculation | 0.4 | 1.3 | 1.5 | 5395 |
+| Decision | 0.2 | 2.1 | 2.2 | 5395 |
+| Simulated order (submit to ack, venue clock) | 100000.0 | 100000.0 | 100000.0 | 40 |
 
-Measured exclusively with std::chrono::steady_clock durations. Provider timestamps are never subtracted from local timestamps: no clock synchronization model exists in v0.1.
+The first three rows are local processing durations measured with std::chrono::steady_clock. The simulated-order row is measured on the venue's simulated clock (submit to acknowledgement) and, being driven by market-event timestamps, is quantized by the tick interval. Provider timestamps are never subtracted from local timestamps: no clock synchronization model exists in v0.1.
 
 ## 7. Limitations and assumptions
 

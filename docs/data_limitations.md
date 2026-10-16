@@ -52,9 +52,10 @@ Two kinds of time exist and are never mixed:
 | `local_receive_ns` | `std::chrono::steady_clock` | local durations only |
 
 Subtracting one from the other is meaningless without a synchronization model
-(PTP/NTP offset and drift), which v0.1 does not have. All latency numbers in
-the report come from `steady_clock` measurements around the code being
-measured. Simulated order latency is model time, and is quantized by the
+(PTP/NTP offset and drift), which v0.1 does not have. The report's local
+processing rows (event, signal, decision) are `steady_clock` measurements
+around the code being measured. The simulated-order row is **model time**, on
+the venue's simulated clock, and is quantized by the
 event stream: an acknowledgement due at `t + 50 ms` is only *observable* at
 the next quote, so measured ack latency can read `100 ms` when quotes arrive
 every `100 ms`.

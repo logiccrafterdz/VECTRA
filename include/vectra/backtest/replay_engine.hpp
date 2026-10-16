@@ -124,11 +124,12 @@ struct ReplayStats {
   std::int64_t first_event_time_ns = 0;
   std::int64_t last_event_time_ns = 0;
 
-  // --- latency (steady_clock durations) ---
+  // --- latency: event/signal/decision are steady_clock durations; the order
+  //     row is venue model time (submit -> ack), quantized by the tick interval
   telemetry::QuantileStats event_latency;
   telemetry::QuantileStats signal_latency;
   telemetry::QuantileStats decision_latency;
-  telemetry::QuantileStats order_latency;  // simulated submit -> ack
+  telemetry::QuantileStats order_latency;  // simulated submit -> ack (venue clock)
 
   execution::ReconciliationReport reconciliation;
   std::uint64_t digest = 0;  // deterministic fingerprint of the run
@@ -151,6 +152,10 @@ class ReplayEngine {
   const std::vector<std::pair<std::int64_t, double>>& equity_curve() const {
     return equity_curve_;
   }
+
+  // Read-only view of the risk engine state (used to verify that realized P&L
+  // is actually fed back into the daily-loss gate).
+  const risk::RiskEngine& risk() const { return risk_; }
 
  private:
   void handle_order_events(std::int64_t now_ns, market::Price bid, market::Price ask);
