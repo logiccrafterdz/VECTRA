@@ -74,7 +74,7 @@ python scripts/gen_sample_ticks.py
 
 ## Actual results (v0.1, sample replay, this machine)
 
-Build: MSVC 19.50 (`/W4 /permissive-`), CMake 4.1, Release. **102/102 unit
+Build: MSVC 19.50 (`/W4 /permissive-`), CMake 4.1, Release. **105/105 unit
 tests pass**, both `ctest` entries pass (`vectra_unit_tests`,
 `vectra_sample_replay`).
 
@@ -95,8 +95,8 @@ time, `config/default.json`):
 | Gross P&L / Net P&L | 3 795.68 / 3 791.70 |
 | Commission / slippage / spread cost | 1.99 / 1.99 / 10.99 |
 | Max drawdown | 899.91 (0.861 %) |
-| Latency median / p95 / p99 (µs) | event 0.4 / 0.6 / 0.7 — signal 0.5 / 1.9 / 2.2 — decision 0.3 / 2.9 / 3.2 |
-| Simulated order submit→ack | 100 000 µs (event-quantized: quotes arrive every 100 ms) |
+| Latency median / p95 / p99 (µs) | event 0.2 / 0.3 / 0.4 — signal 0.3 / 1.0 / 1.1 — decision 0.2 / 1.5 / 1.6 (steady_clock; varies per run) |
+| Simulated order submit→ack (venue clock) | 100 000 µs (event-quantized: quotes arrive every 100 ms) |
 
 The P&L figures come from a **synthetic** path and are a pipeline smoke test.
 They are reported because hiding them would be dishonest; they carry no
@@ -115,6 +115,7 @@ VECTRA/
     data_limitations.md     what the data and the simulator cannot support
     testing_plan.md         coverage map + validation plan for real data
     full_project_report.md  complete A-to-Z build, verification and results report
+    audit_v0.1.md           evidence-based audit: findings, fixes and go/no-go
   config/default.json       all thresholds (UNCALIBRATED values marked)
   include/vectra/
     market/ behavior/ prediction/ risk/ execution/ backtest/ telemetry/ config/

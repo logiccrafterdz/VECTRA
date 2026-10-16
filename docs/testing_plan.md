@@ -13,7 +13,7 @@
 * **Synthetic data is for coverage, not for evidence** (see
   `docs/data_limitations.md`).
 
-## 2. What is covered today (102 tests, `vectra_tests`)
+## 2. What is covered today (105 tests, `vectra_tests`)
 
 | Area | Tests | Representative cases |
 |---|---|---|
@@ -27,9 +27,9 @@
 | Prediction | 10 | five data-gate rejections, continuation rule, reversal rule, unextended neutral, neutral band, low-confidence suppression, determinism, expected-move cap |
 | Risk engine | 13 | allow path, kill switch (+ recovery), disabled engine, daily loss + day reset, invalid/neutral signals, insufficient edge, cost-too-high, max position/exposure/open orders/orders-per-day, invalid-ratio gate, stale gate |
 | Order states | 3 | legal transitions, illegal transitions refused, failed transition leaves order untouched |
-| Simulated broker | 9 | submit, **duplicate client id protection**, invalid request, venue rejection, latency-gated fill at the ask, partial fill, cumulative partials to full fill, cancel lifecycle, invalid quotes do not drive fills |
+| Simulated broker | 10 | submit, **duplicate client id protection**, invalid request, venue rejection, latency-gated fill at the ask, **fill attempt before ack is not dropped (`FillAttemptBeforeAckIsNotDropped`)**, partial fill, cumulative partials to full fill, cancel lifecycle, invalid quotes do not drive fills |
 | Account | 2 | average-price realized P&L, reconciliation match/mismatch |
-| Replay | 8 | **no look-ahead (prefix == full-run prefix)**, deterministic digest, anomaly accounting per reason, kill switch ⇒ zero orders, net ≤ gross, signal counts vs records, end-to-end signal path |
+| Replay | 9 | **no look-ahead (prefix == full-run prefix)**, deterministic digest, anomaly accounting per reason, kill switch ⇒ zero orders, net ≤ gross, signal counts vs records, end-to-end signal path, **realized P&L fed to the risk engine (`RealizedPnlIsFedToRiskEngine`)**, **daily-loss gate blocks orders after a loss (`DailyLossLimitBlocksOrdersAfterLoss`)** |
 | Report | 2 | all required sections present, unavailable latency shown as `n/a` |
 | Telemetry | 6 | nearest-rank quantiles on known samples, sample-count gating, unsorted input, steady-clock stopwatch |
 | Config | 8 | JSON typed access, defaults, malformed input with position, settings overlay (ms→ns), missing file, shipped `config/default.json` validity |

@@ -33,7 +33,7 @@
 21. [Next experiments](#21-next-experiments)
 22. [Appendix A — File inventory](#22-appendix-a--file-inventory)
 23. [Appendix B — Exact commands and exit statuses](#23-appendix-b--exact-commands-and-exit-statuses)
-24. [Appendix C — Full test inventory (102 tests)](#24-appendix-c--full-test-inventory-102-tests)
+24. [Appendix C — Full test inventory (105 tests)](#24-appendix-c--full-test-inventory-105-tests)
 
 ---
 
@@ -49,9 +49,9 @@ Final state:
 
 | Indicator | Value |
 |---|---|
-| C++ source/header files | 42 files, **6 312 lines** (headers + sources + tests) |
-| Documentation | 5 markdown files, **710 lines**, plus this report |
-| Unit tests | **102, all passing** (self-contained harness, no third-party test framework) |
+| C++ source/header files | 42 files, **6 407 lines** (headers + sources + tests) |
+| Documentation | 6 markdown files, **977 lines**, plus this report |
+| Unit tests | **105, all passing** (self-contained harness, no third-party test framework) |
 | `ctest` entries | **2 / 2 passing** (`vectra_unit_tests`, `vectra_sample_replay`) |
 | Compiler warnings | **0** (MSVC `/W4 /permissive-`, also configured for `-Wall -Wextra -Wpedantic`) |
 | External dependencies | **0** (standard library only, including the JSON reader and test harness) |
@@ -81,7 +81,7 @@ word "synthetic" next to every P&L figure produced from the sample dataset.
 | 3G | Timing per stage, invalid/stale counts, signal counts, gross/net P&L, drawdown, costs, median/p95/p99, `steady_clock` only | `telemetry/*`, report §6 | Done |
 | 4 | Repository layout (dirs, docs, config, examples, scripts) | full tree, §22 | Done (+ extra `config/` module) |
 | 5 | Midpoint, `r_h = log(mid_t/mid_{t-h})`, multiple windows, exhaustion inputs, documented rule, neutral outcome, configurable thresholds, uncalibrated values marked | `mathematical_model.md`, code | Done |
-| 6 | Tests for validation, invalid/stale, ordering, rolling windows, zero volatility, exhaustion edges, no-look-ahead, order states, duplicate orders, risk/kill switch, deterministic replay | 102 tests | Done — all required categories covered |
+| 6 | Tests for validation, invalid/stale, ordering, rolling windows, zero volatility, exhaustion edges, no-look-ahead, order states, duplicate orders, risk/kill switch, deterministic replay, realized-P&L→risk wiring, fill-attempt-before-ack, daily-loss gating | 105 tests | Done — all required categories covered |
 | 6 | Small synthetic dataset, explicitly not proof of edge | `examples/sample_ticks.csv` + generator + repeated disclaimers | Done |
 | 6 | Report with events, valid predictions, signal distribution, gross/net, costs, drawdown, latency quantiles, limitations | `reports/sample_report.md` | Done — all 9 items present |
 | 7 | Warnings, explicit errors, RAII, no unsafe concurrency, reproducible commands, sample config, no hidden failures, no profitability claims | project-wide | Done |
@@ -348,7 +348,10 @@ State mutated exclusively by replay-driven `record_*` calls
 (`record_data_point`, `record_position`, `record_open_orders`,
 `record_order_placed`, `record_realized_pnl`, `on_new_day`,
 `set_kill_switch`) — day rollover resets daily P&L and order counters, and
-passing the *same* day index does not reset (tested).
+passing the *same* day index does not reset (tested). The realized-P&L feed is
+wired from the replay's local bookkeeping and covered by
+`Replay.RealizedPnlIsFedToRiskEngine` and
+`Replay.DailyLossLimitBlocksOrdersAfterLoss`.
 
 ---
 
@@ -379,9 +382,10 @@ tolerance)` returning `ReconciliationReport`.
   the *original* order and emits a `Duplicate` event (counted, never a second
   order).
 * Venue reject probability 0.05 `[U]` decided at submit, scheduled at ack time.
-* Fills only after acknowledgement, only on valid quotes, only at
-  `fill_latency` after submit — an order submitted at event *t* can never fill
-  at *t* (no look-ahead).
+* Fills only after acknowledgement, only on valid quotes, and no earlier than
+  `max(fill_latency, ack_latency)` after submit — an order submitted at event
+  *t* can never fill at *t* (no look-ahead), and a fill scheduled before the
+  acknowledgement is deferred rather than dropped.
 * Bid/ask aware: buys lift `ask + slippage`, sells hit `bid − slippage`;
   marketable-limit checks re-schedule instead of filling.
 * Partial fills with probability 0.30 `[U]` of the remaining size at fraction
@@ -452,7 +456,8 @@ tolerance)` returning `ReconciliationReport`.
 ### Report writer
 
 Seven sections: market data, predictions/signal distribution, decisions/risk,
-execution, simulated performance, latency table (µs, with `n/a` gating),
+execution, simulated performance, latency table (µs: three local
+`steady_clock` rows plus one venue-clock row, with `n/a` gating),
 limitations & assumptions (8 bullets) + run digest. Every report carries the
 disclaimer that scores are not calibrated probabilities and that synthetic
 data cannot demonstrate an edge.
@@ -595,7 +600,7 @@ Verification commands and **actual exit statuses**:
 cmake -S . -B build                                → configure OK (VS 18 2026, MSVC 19.50.35718)
 cmake --build build --config Release               → 0 errors, 0 warnings; produced
                                                      vectra_core.lib, vectra.exe, vectra_tests.exe
-./build/Release/vectra_tests.exe                   → "tests run: 102, passed: 102, failed: 0", exit 0
+./build/Release/vectra_tests.exe                   → "tests run: 105, passed: 105, failed: 0", exit 0
 ctest --test-dir build -C Release --output-on-failure
                                                     → 100% tests passed, 0 failed out of 2, exit 0
 cmake -S . -B build-verify (clean tree) + build    → grep -c "error|warning" = 0
@@ -648,7 +653,7 @@ Detailed report figures:
 | Decisions | allowed 40 / rejected 5 355: NoSignal=2 582, InsufficientEdge=1 067, InvalidSignal=474, MaxPosition=684, MaxOrdersPerDay=433, CostTooHigh=115; kill switch inactive; min edge 0.000150; max position 50 000; max daily loss 250; max open orders 3 |
 | Execution | 40 submitted, 40 accepted, 0 venue rejects, 0 cancels, 0 duplicates, 53 fills (13 partial), reconciliation **matched** |
 | Performance | initial 100 000.00 → final 103 791.70; realized 3 581.47; gross 3 795.68; net 3 791.70; commission 1.99; slippage 1.99; spread cost 10.99; max drawdown 899.91 (0.861 %) |
-| Latency (µs) | event 0.4 / 0.6 / 0.7 (n=5 395); signal 0.5 / 1.9 / 2.2 (n=5 395); decision 0.3 / 2.9 / 3.2 (n=5 395); submit→ack 100 000 / 100 000 / 100 000 (n=40) — quantized by the 100 ms quote interval, explained in the report |
+| Latency (µs) | event 0.2 / 0.3 / 0.4 (n=5 395); signal 0.3 / 1.0 / 1.1 (n=5 395); decision 0.2 / 1.5 / 1.6 (n=5 395); simulated order submit→ack 100 000 / 100 000 / 100 000 (n=40) — the local rows are `steady_clock` and vary per run; the order row is on the venue clock and quantized by the 100 ms quote interval, explained in the report |
 | Digest | `bc06ff21b93aecfb` (FNV-1a) |
 
 Interpretation discipline: the P&L comes from a synthetic path and is labelled
@@ -660,13 +665,14 @@ a *pipeline smoke test* in both the console and the report.
 
 | File | Lines | Content |
 |---|---|---|
-| `README.md` | 155 | overview, component table, build/test/run commands, actual results, structure, design rules, next experiment |
+| `README.md` | 156 | overview, component table, build/test/run commands, actual results, structure, design rules, next experiment |
 | `docs/architecture.md` | 127 | ASCII data-flow diagram, component table, key decisions, ownership/error handling, extension points |
 | `docs/mathematical_model.md` | 219 | every formula with symbols, `[U]` markers, decision rule table, calibration status, falsification criteria |
-| `docs/data_limitations.md` | 108 | what quotes are/aren't, behavioral-attribution ban, clock domains, simulator blind spots, synthetic-data warning, statistical caveats, scope statement |
-| `docs/testing_plan.md` | 102 | principles, coverage map of all 102 tests, run instructions, no-look-ahead & determinism test details, real-data validation plan, explicit non-goals |
+| `docs/data_limitations.md` | 109 | what quotes are/aren't, behavioral-attribution ban, clock domains, simulator blind spots, synthetic-data warning, statistical caveats, scope statement |
+| `docs/testing_plan.md` | 102 | principles, coverage map of all 105 tests, run instructions, no-look-ahead & determinism test details, real-data validation plan, explicit non-goals |
 | `reports/sample_report.md` | 99 | generated 7-section replay report |
 | `docs/full_project_report.md` | this file | complete A-to-Z account of the build, verification and results |
+| `docs/audit_v0.1.md` | 264 | evidence-based v0.1 audit: findings by severity, reproducible evidence, fixes and regression tests, verified-facts table, go/no-go decision |
 | `config/default.json` | 95 | every threshold with inline `_comment` notes; uncalibrated values called out |
 
 ---
@@ -746,11 +752,12 @@ VECTRA/
 ├── docs/
 │   ├── architecture.md                127
 │   ├── mathematical_model.md          219
-│   ├── data_limitations.md            108
+│   ├── data_limitations.md            109
 │   ├── testing_plan.md                102
-│   └── full_project_report.md        this document
+│   ├── full_project_report.md        this document
+│   └── audit_v0.1.md                  264 (audit review + go/no-go)
 ├── include/vectra/
-│   ├── backtest/   replay_engine.hpp (197), report.hpp (17)
+│   ├── backtest/   replay_engine.hpp (202), report.hpp (17)
 │   ├── behavior/   behavior_engine.hpp (136), exhaustion.hpp (48), rolling_stats.hpp (81)
 │   ├── config/     json.hpp (69), settings.hpp (30)
 │   ├── execution/  execution_gateway.hpp (61), order.hpp (116), simulated_broker.hpp (91)
@@ -759,10 +766,10 @@ VECTRA/
 │   ├── risk/       risk_engine.hpp (127)
 │   └── telemetry/  latency.hpp (109)
 ├── src/
-│   ├── backtest/   replay_engine.cpp (397), report.cpp (225)
+│   ├── backtest/   replay_engine.cpp (405), report.cpp (228)
 │   ├── behavior/   behavior_engine.cpp (194), exhaustion.cpp (66)
 │   ├── config/     json.cpp (406), settings.cpp (216)
-│   ├── execution/  order.cpp (79), simulated_broker.cpp (413)
+│   ├── execution/  order.cpp (79), simulated_broker.cpp (419)
 │   ├── market/     csv_reader.cpp (170), market_event.cpp (116), validator.cpp (129)
 │   ├── prediction/ scoring_predictor.cpp (165)
 │   ├── risk/       risk_engine.cpp (230)
@@ -775,7 +782,7 @@ VECTRA/
 ├── reports/sample_report.md           generated replay report
 └── scripts/ build.sh (14), build.bat (17), replay_sample.sh (22), gen_sample_ticks.py (111)
 
-C++ total: 6 312 lines across 42 files.
+C++ total: 6 407 lines across 42 files.
 ```
 
 ---
@@ -804,14 +811,14 @@ ctest --test-dir build -C Release --output-on-failure
 python scripts/gen_sample_ticks.py
 ```
 
-Exit statuses observed: build `0`; `vectra_tests` `0` (102/102);
+Exit statuses observed: build `0`; `vectra_tests` `0` (105/105);
 `ctest` `0` (2/2); replay `0`; missing `--data` `2`; unknown flag `2`;
 reconciliation failure would be `1` (path tested by unit tests, not by
 corrupting the shipped CSV).
 
 ---
 
-## 24. Appendix C — Full test inventory (102 tests)
+## 24. Appendix C — Full test inventory (105 tests)
 
 **Price (4)** — ParsesStandardForexQuotes · RejectsMalformedInput ·
 FormattingRoundTrips · IntegerMidpointIsExact
@@ -857,18 +864,20 @@ StaleDataStreamMarksDataUnreliable · DataHealthStartsReliable
 **OrderStates (3)** — LegalTransitionsAreAllowed · IllegalTransitionsAreRefused ·
 ApplyTransitionLeavesOrderUntouchedOnFailure
 
-**Broker (9)** — SubmitCreatesSubmittedOrder · DuplicateClientOrderIdIsProtected ·
+**Broker (10)** — SubmitCreatesSubmittedOrder · DuplicateClientOrderIdIsProtected ·
 InvalidRequestIsRefused · VenueRejectionFollowsLatency ·
-FillHappensAfterLatencyAtTheAsk · PartialFillLeavesOrderWorking ·
+FillHappensAfterLatencyAtTheAsk · FillAttemptBeforeAckIsNotDropped ·
+PartialFillLeavesOrderWorking ·
 RepeatedFillsAccumulateToFullFill · CancelLifecycleWorks ·
 InvalidQuotesDoNotDriveFills
 
 **Account (2)** — RealizedPnlUsesAveragePrice · ReconciliationDetectsMismatches
 
-**Replay (7)** — NoLookAheadOnPrefix · DeterministicReplayProducesIdenticalDigest ·
+**Replay (9)** — NoLookAheadOnPrefix · DeterministicReplayProducesIdenticalDigest ·
 CountsEveryAnomalyClass · KillSwitchBlocksAllOrders ·
 CostsDoNotInflateNetPnl · SignalCountsMatchRecords ·
-SampleStreamYieldsContinuationSignals
+SampleStreamYieldsContinuationSignals · RealizedPnlIsFedToRiskEngine ·
+DailyLossLimitBlocksOrdersAfterLoss
 
 **Report (2)** — ContainsAllRequiredSections ·
 MarksUnavailableLatencyAsNotApplicable
