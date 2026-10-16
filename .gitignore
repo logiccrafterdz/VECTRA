@@ -1,0 +1,101 @@
+# ---------------------------------------------------------------------------
+# VECTRA .gitignore
+# ---------------------------------------------------------------------------
+
+# Build directories (out-of-source builds)
+build/
+build-*/
+out/
+cmake-build-*/
+_deps/
+CMakeFiles/
+
+# CMake generated files (when configured in-tree)
+CMakeCache.txt
+cmake_install.cmake
+install_manifest.txt
+CTestTestfile.cmake
+Testing/
+compile_commands.json
+*.cmake.stamp
+
+# Visual Studio / MSVC
+.vs/
+*.sln
+*.vcxproj
+*.vcxproj.filters
+*.vcxproj.user
+*.suo
+*.user
+*.aps
+*.ncb
+*.sdf
+*.opensdf
+*.VC.db
+*.VC.opendb
+Debug/
+Release/
+x64/
+x86/
+
+# Compiled objects, libraries and executables
+*.o
+*.obj
+*.lo
+*.a
+*.lib
+*.so
+*.so.*
+*.dylib
+*.dll
+*.exp
+*.ilk
+*.pdb
+*.idb
+*.exe
+*.out
+*.app
+
+# Coverage / profiling artifacts
+*.gcno
+*.gcda
+*.gcov
+*.profraw
+*.profdata
+*.lcov
+coverage/
+
+# Python (scripts/gen_sample_ticks.py)
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.mypy_cache/
+.pytest_cache/
+
+# Logs
+*.log
+log/
+
+# Editors / IDEs
+.idea/
+.clangd/
+.cache/
+*.swp
+*.swo
+*~
+*.bak
+*.tmp
+*.orig
+*.rej
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+ehthumbs.db
+desktop.ini

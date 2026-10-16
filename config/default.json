@@ -1,0 +1,95 @@
+{
+  "_comment": "VECTRA v0.1 default configuration. Every threshold below is a starting value marked UNCALIBRATED: none of these numbers has been fitted to real market data. Do not treat them as established constants.",
+
+  "instrument": "EURUSD",
+
+  "validation": {
+    "_comment": "Quote validation gates. max_spread and the time thresholds are absolute price units / milliseconds.",
+    "max_spread": 0.00050,
+    "stale_threshold_ms": 5000,
+    "reorder_tolerance_ms": 0,
+    "stale_gap_threshold_ms": 5000,
+    "future_skew_ms": 1000,
+    "require_source_time": true,
+    "require_sequence": true
+  },
+
+  "behavior": {
+    "_comment": "Observation windows are counted in events (ticks), not wall-clock time.",
+    "window_short_events": 8,
+    "window_mid_events": 32,
+    "window_long_events": 128,
+    "vol_window_events": 256,
+    "persistence_window_events": 16,
+    "min_vol_samples": 32,
+    "min_volatility": 1e-8,
+    "spread_warn_ratio": 0.00050
+  },
+
+  "exhaustion": {
+    "_comment": "UNCALIBRATED weights of the movement-exhaustion hypothesis score.",
+    "weight_extension": 0.35,
+    "weight_deceleration": 0.30,
+    "weight_response_fade": 0.20,
+    "weight_quality": 0.15,
+    "z_normalization": 3.0,
+    "spread_reference_ratio": 0.00050
+  },
+
+  "prediction": {
+    "_comment": "UNCALIBRATED rule thresholds. Scores are not calibrated probabilities.",
+    "horizon_events": 8,
+    "reversal_exhaustion_threshold": 0.65,
+    "continuation_exhaustion_threshold": 0.45,
+    "min_extension_z": 1.5,
+    "min_persistence": 0.25,
+    "max_persistence_for_reversal": 0.50,
+    "min_confidence": 0.30,
+    "max_expected_move_log": 0.004,
+    "full_confidence_samples": 64
+  },
+
+  "risk": {
+    "_comment": "UNCALIBRATED limits. Prices are absolute price units (e.g. 0.00015 = 1.5 pips on a 4-decimal pair).",
+    "enabled": true,
+    "kill_switch": false,
+    "min_expected_edge": 0.00015,
+    "commission": 0.00001,
+    "slippage": 0.00002,
+    "max_spread": 0.00040,
+    "order_units": 5000,
+    "max_position_units": 50000,
+    "max_exposure": 60000,
+    "max_daily_loss": 250,
+    "max_open_orders": 3,
+    "max_orders_per_day": 40,
+    "data_health_window": 200,
+    "max_invalid_ratio": 0.20,
+    "data_stale_gate_ms": 2000
+  },
+
+  "execution": {
+    "_comment": "Simulated venue model. Probabilities are UNCALIBRATED simulator assumptions, not observed venue statistics.",
+    "ack_latency_ms": 50,
+    "fill_latency_ms": 100,
+    "cancel_latency_ms": 100,
+    "reject_probability": 0.05,
+    "partial_fill_probability": 0.30,
+    "partial_fill_fraction": 0.50,
+    "slippage": 0.00001,
+    "commission_per_unit": 0.00001,
+    "seed": 20261015
+  },
+
+  "backtest": {
+    "initial_capital": 100000,
+    "mark_with_mid": false,
+    "min_latency_samples": 30,
+    "max_equity_curve_points": 1000
+  },
+
+  "telemetry": {
+    "_comment": "Median/p95/p99 are only reported when at least this many samples exist.",
+    "min_latency_samples": 30
+  }
+}
