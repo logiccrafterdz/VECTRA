@@ -103,7 +103,14 @@ void ReplayEngine::apply_local_fill(const execution::OrderEvent& event,
   // is reported separately and never added twice.
   stats_.spread_cost_total += event.units * half_spread_price;
 
+  const double realized_before = local_account_.realized_pnl;
   apply_fill_to(local_account_, event.side, event.units, event.price, commission);
+  // Feed the realized P&L of this fill back into the risk engine so that the
+  // daily-loss gate sees closing P&L (previously it never did during replay).
+  const double realized_delta = local_account_.realized_pnl - realized_before;
+  if (realized_delta != 0.0) {
+    risk_.record_realized_pnl(realized_delta);
+  }
 
   // Gross bookkeeping: same execution price minus the modeled slippage, and
   // no commission, so gross vs net isolates the transaction costs.
@@ -179,6 +186,7 @@ void ReplayEngine::update_equity(market::Price bid, market::Price ask,
   if (net_equity > equity_peak_) {
     equity_peak_ = net_equity;
   }
+  stats_.peak_equity = equity_peak_;
   const double drawdown = equity_peak_ - net_equity;
   if (drawdown > stats_.max_drawdown) {
     stats_.max_drawdown = drawdown;

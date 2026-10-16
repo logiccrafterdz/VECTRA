@@ -183,15 +183,18 @@ void write_markdown_report(std::ostream& out, const ReplayEngine& engine,
          "smoke test**, not evidence of an edge.\n\n";
 
   // -------------------------------------------------------------- latency
-  out << "## 6. Processing latency (steady_clock, microseconds)\n\n";
+  out << "## 6. Latency (microseconds)\n\n";
   out << "| Stage | Median | p95 | p99 | Samples |\n|---|---|---|---|---|\n";
   write_quantile_row(out, "Event processing", s.event_latency);
   write_quantile_row(out, "Signal calculation", s.signal_latency);
   write_quantile_row(out, "Decision", s.decision_latency);
-  write_quantile_row(out, "Simulated order (submit to ack)", s.order_latency);
-  out << "\nMeasured exclusively with std::chrono::steady_clock durations. "
-         "Provider timestamps are never subtracted from local timestamps: no "
-         "clock synchronization model exists in v0.1.\n\n";
+  write_quantile_row(out, "Simulated order (submit to ack, venue clock)", s.order_latency);
+  out << "\nThe first three rows are local processing durations measured with "
+         "std::chrono::steady_clock. The simulated-order row is measured on the "
+         "venue's simulated clock (submit to acknowledgement) and, being driven "
+         "by market-event timestamps, is quantized by the tick interval. Provider "
+         "timestamps are never subtracted from local timestamps: no clock "
+         "synchronization model exists in v0.1.\n\n";
 
   // ----------------------------------------------------------- limitations
   out << "## 7. Limitations and assumptions\n\n";

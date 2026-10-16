@@ -13,6 +13,7 @@ using vectra::backtest::ReplayEngine;
 using vectra::backtest::ReplayStats;
 using vectra::prediction::RejectionReason;
 using vectra::prediction::SignalKind;
+using vectra::test::make_quote;
 using vectra::test::make_walk;
 using vectra::test::to_csv;
 
@@ -38,6 +39,31 @@ ReplayConfig test_config() {
 // Strong, persistent uptrend: reliably produces continuation candidates.
 std::vector<vectra::market::MarketEvent> trending_walk(std::size_t count) {
   return make_walk(count, 1.10, 0.00010, 3e-5, 1.2e-4);
+}
+
+// Deterministic shape: a short climb (continuation longs fill) followed by a
+// long sell-off (continuation shorts close those longs, realizing P&L) and a
+// flat tail. This realizes a NET LOSS, so the daily-loss gate is exercised.
+std::vector<vectra::market::MarketEvent> v_walk() {
+  std::vector<vectra::market::MarketEvent> events;
+  std::int64_t ts = 0;
+  std::uint64_t seq = 1;
+  double mid = 1.1000;
+  for (int i = 0; i < 40; ++i) {  // climb to ~1.1040
+    mid += 0.0001;
+    ts += 100'000'000;
+    events.push_back(make_quote(mid, 0.00010, ts, seq++));
+  }
+  for (int i = 0; i < 300; ++i) {  // sustained sell-off to ~1.0740
+    mid -= 0.0001;
+    ts += 100'000'000;
+    events.push_back(make_quote(mid, 0.00010, ts, seq++));
+  }
+  for (int i = 0; i < 40; ++i) {  // flat tail: post-loss decisions still occur
+    ts += 100'000'000;
+    events.push_back(make_quote(mid, 0.00010, ts, seq++));
+  }
+  return events;
 }
 
 }  // namespace
@@ -155,6 +181,34 @@ VT_TEST(Replay, KillSwitchBlocksAllOrders) {
                static_cast<int>(stats.predictions_total));
 }
 
+// Regression: realized P&L from closing fills must be fed back into the risk
+// engine's daily-loss gate. Before the fix, record_realized_pnl was never
+// called during replay, so DailyLossLimit could never trigger.
+VT_TEST(Replay, RealizedPnlIsFedToRiskEngine) {
+  ReplayConfig config = test_config();
+  ReplayEngine engine(config);
+  std::istringstream input(to_csv(v_walk()));
+  const ReplayStats stats = engine.run(input, "realized-wiring");
+
+  // The scenario must actually close positions and realize P&L, otherwise the
+  // assertion below would pass trivially.
+  VT_ASSERT_TRUE(stats.realized_pnl != 0.0);
+  VT_ASSERT_NEAR(engine.risk().daily_realized_pnl(), stats.realized_pnl, 1e-6);
+}
+
+// Regression: once realized losses exceed max_daily_loss, the gate must block
+// further orders with the DailyLossLimit reason.
+VT_TEST(Replay, DailyLossLimitBlocksOrdersAfterLoss) {
+  ReplayConfig config = test_config();
+  config.risk.max_daily_loss = 1e-6;  // trip on the first realized loss
+  ReplayEngine engine(config);
+  std::istringstream input(to_csv(v_walk()));
+  const ReplayStats stats = engine.run(input, "daily-loss");
+
+  VT_ASSERT_TRUE(stats.realized_pnl != 0.0);
+  VT_ASSERT_TRUE(stats.decision_reasons.count("DailyLossLimit") > 0);
+}
+
 VT_TEST(Replay, CostsDoNotInflateNetPnl) {
   ReplayEngine engine(test_config());
   std::istringstream input(to_csv(trending_walk(400)));
@@ -214,7 +268,7 @@ VT_TEST(Report, ContainsAllRequiredSections) {
   VT_ASSERT_TRUE(text.find("## 3. Decisions and risk") != std::string::npos);
   VT_ASSERT_TRUE(text.find("## 4. Execution (simulated)") != std::string::npos);
   VT_ASSERT_TRUE(text.find("## 5. Simulated performance") != std::string::npos);
-  VT_ASSERT_TRUE(text.find("## 6. Processing latency") != std::string::npos);
+  VT_ASSERT_TRUE(text.find("## 6. Latency") != std::string::npos);
   VT_ASSERT_TRUE(text.find("## 7. Limitations and assumptions") != std::string::npos);
   VT_ASSERT_TRUE(text.find("not**") != std::string::npos);  // "not calibrated probabilities"
   VT_ASSERT_TRUE(text.find("synthetic") != std::string::npos);
