@@ -74,7 +74,7 @@ python scripts/gen_sample_ticks.py
 
 ## Actual results (v0.1, sample replay, this machine)
 
-Build: MSVC 19.50 (`/W4 /permissive-`), CMake 4.1, Release. **105/105 unit
+Build: MSVC 19.50 (`/W4 /permissive-`), CMake 4.1, Release. **114/114 unit
 tests pass**, both `ctest` entries pass (`vectra_unit_tests`,
 `vectra_sample_replay`).
 
@@ -143,13 +143,13 @@ VECTRA/
 6. **No hidden failures.** Tests, validation rejects and reconciliation
    mismatches all exit non-zero.
 
-## Next experiment
+## Real EUR/USD empirical study (300,000 ticks, 3-way chronological split)
 
-Ingest real tick data (Dukascopy/TrueFX-style CSV), split chronologically into
-development / validation / out-of-sample **before** touching any threshold,
-then run the pre-registered threshold grid and compare against an
-always-neutral baseline with block-bootstrap confidence intervals — see
-[docs/testing_plan.md](docs/testing_plan.md) §6.
+See [docs/eurusd_empirical_study.md](docs/eurusd_empirical_study.md) for the
+walk-forward evaluation on 300,000 institutional FXCM EUR/USD quotes (`DEV` /
+`VAL` / `OOS`) using wall-clock observation windows (`config/real_eurusd.json`),
+multi-scale regime efficiency filtering, causal forward-return evaluation, and
+autocorrelation-robust non-overlapping horizon blocks.
 
 ## License
 

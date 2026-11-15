@@ -144,6 +144,29 @@ void write_markdown_report(std::ostream& out, const ReplayEngine& engine,
     write_fwd_row("Continuation", s.forward_continuation);
     write_fwd_row("Reversal", s.forward_reversal);
     write_fwd_row("All usable signals", s.forward_all);
+    write_fwd_row("Naive directional baseline", s.forward_baseline);
+    out << "\n";
+    out << "#### Autocorrelation-robust non-overlapping horizon blocks\n\n";
+    out << "| Signal kind | Independent blocks | Block hit rate (mid) | Block mean spread-crossed move | Student t-stat |\n"
+           "|---|---|---|---|---|\n";
+    const auto write_block_row = [&out](const char* label, const SignalHorizonStats& fs) {
+      out << "| " << label << " | " << fs.non_overlapping << " | ";
+      if (fs.non_overlapping == 0) {
+        out << "n/a | n/a | n/a |\n";
+        return;
+      }
+      out << percent(100.0 * fs.non_overlapping_hit_rate()) << " | "
+          << number(fs.non_overlapping_mean_spread, 6) << " | ";
+      if (fs.non_overlapping < 2) {
+        out << "n/a |\n";
+      } else {
+        out << number(fs.non_overlapping_t_stat(), 2) << " |\n";
+      }
+    };
+    write_block_row("Continuation", s.forward_continuation);
+    write_block_row("Reversal", s.forward_reversal);
+    write_block_row("All usable signals", s.forward_all);
+    write_block_row("Naive directional baseline", s.forward_baseline);
     out << "\n";
   }
   out << "Scores are continuity/reversal **scores** in [0,1], produced by a "

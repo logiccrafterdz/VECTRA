@@ -34,6 +34,16 @@ Source: `examples\real_eurusd_oos.csv`
 | Continuation | 1239 | 30.751% | -0.000196 | -0.000208 |
 | Reversal | 2408 | 63.289% | 0.000094 | 0.000082 |
 | All usable signals | 3647 | 52.235% | -0.000005 | -0.000017 |
+| Naive directional baseline | 82164 | 47.809% | 0.000006 | -0.000006 |
+
+#### Autocorrelation-robust non-overlapping horizon blocks
+
+| Signal kind | Independent blocks | Block hit rate (mid) | Block mean spread-crossed move | Student t-stat |
+|---|---|---|---|---|
+| Continuation | 14 | 21.429% | -0.000196 | -2.75 |
+| Reversal | 29 | 55.172% | 0.000018 | 0.26 |
+| All usable signals | 33 | 51.515% | -0.000026 | -0.37 |
+| Naive directional baseline | 66 | 54.545% | 0.000021 | 0.49 |
 
 Scores are continuity/reversal **scores** in [0,1], produced by a fixed formula with uncalibrated thresholds (see docs/mathematical_model.md). They have not been calibrated against realized outcomes and must not be read as probabilities.
 
@@ -87,9 +97,9 @@ These results come from a synthetic replay. They are a **pipeline smoke test**, 
 
 | Stage | Median | p95 | p99 | Samples |
 |---|---|---|---|---|
-| Event processing | 1.5 | 2.1 | 2.6 | 90477 |
-| Signal calculation | 1.8 | 2.0 | 2.5 | 90477 |
-| Decision | 0.3 | 0.4 | 2.8 | 90477 |
+| Event processing | 0.8 | 1.1 | 1.5 | 90477 |
+| Signal calculation | 0.9 | 1.2 | 1.4 | 90477 |
+| Decision | 0.2 | 0.3 | 1.4 | 90477 |
 | Simulated order (submit to ack, venue clock) | 57000.0 | 1293000.0 | 1768000.0 | 61 |
 
 The first three rows are local processing durations measured with std::chrono::steady_clock. The simulated-order row is measured on the venue's simulated clock (submit to acknowledgement) and, being driven by market-event timestamps, is quantized by the tick interval. Provider timestamps are never subtracted from local timestamps: no clock synchronization model exists in v0.1.

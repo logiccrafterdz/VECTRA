@@ -221,7 +221,8 @@ void ReplayEngine::update_equity(market::Price bid, market::Price ask,
 void ReplayEngine::evaluate_matured_signals(std::uint64_t current_event_index,
                                             std::int64_t current_time_ns, double mid,
                                             double bid, double ask) {
-  const auto accumulate = [](SignalHorizonStats& s, double signed_mid, double net_spread) {
+  const auto accumulate = [](SignalHorizonStats& s, double signed_mid, double net_spread,
+                             bool is_non_overlapping) {
     ++s.evaluated;
     if (signed_mid > 0.0) {
       ++s.hits;
@@ -230,6 +231,16 @@ void ReplayEngine::evaluate_matured_signals(std::uint64_t current_event_index,
     }
     s.sum_signed_mid_move += signed_mid;
     s.sum_net_spread_move += net_spread;
+    if (is_non_overlapping) {
+      ++s.non_overlapping;
+      if (signed_mid > 0.0) {
+        ++s.non_overlapping_hits;
+      }
+      const double delta = net_spread - s.non_overlapping_mean_spread;
+      s.non_overlapping_mean_spread += delta / static_cast<double>(s.non_overlapping);
+      const double delta2 = net_spread - s.non_overlapping_mean_spread;
+      s.non_overlapping_m2_spread += delta * delta2;
+    }
   };
 
   const bool use_time_horizon = config_.eval_horizon_ns > 0;
@@ -244,11 +255,16 @@ void ReplayEngine::evaluate_matured_signals(std::uint64_t current_event_index,
     const double net_spread =
         item.direction >= 0.0 ? (bid - item.entry_ask) : (item.entry_bid - ask);
 
-    accumulate(stats_.forward_all, signed_mid, net_spread);
-    if (item.kind == prediction::SignalKind::Continuation) {
-      accumulate(stats_.forward_continuation, signed_mid, net_spread);
-    } else if (item.kind == prediction::SignalKind::Reversal) {
-      accumulate(stats_.forward_reversal, signed_mid, net_spread);
+    if (item.is_baseline) {
+      accumulate(stats_.forward_baseline, signed_mid, net_spread, item.non_overlapping_kind);
+    } else {
+      accumulate(stats_.forward_all, signed_mid, net_spread, item.non_overlapping_all);
+      if (item.kind == prediction::SignalKind::Continuation) {
+        accumulate(stats_.forward_continuation, signed_mid, net_spread,
+                   item.non_overlapping_kind);
+      } else if (item.kind == prediction::SignalKind::Reversal) {
+        accumulate(stats_.forward_reversal, signed_mid, net_spread, item.non_overlapping_kind);
+      }
     }
   }
 }
@@ -406,19 +422,71 @@ ReplayStats ReplayEngine::run(std::istream& input, const std::string& source_nam
         ++stats_.predictions_total;
         ++stats_.signal_kinds[ prediction::to_string(prediction.kind)];
         ++stats_.rejection_reasons[prediction::to_string(prediction.rejection)];
+        const std::size_t eval_h =
+            config_.prediction.horizon_events > 0 ? config_.prediction.horizon_events : 1;
+        const bool use_time_h = config_.eval_horizon_ns > 0;
+        const std::uint64_t target_ev = features.event_index + eval_h;
+        const std::int64_t target_ns = event.source_time_ns + config_.eval_horizon_ns;
+
+        if (features.valid && features.disp_short != 0.0) {
+          const bool no_base =
+              use_time_h ? (event.source_time_ns >= next_non_overlap_time_base_)
+                         : (features.event_index >= next_non_overlap_event_base_);
+          if (no_base) {
+            next_non_overlap_event_base_ = target_ev;
+            next_non_overlap_time_base_ = target_ns;
+          }
+          pending_signal_evals_.push_back(PendingSignalEval{
+              target_ev,
+              target_ns,
+              prediction::SignalKind::Continuation,
+              features.disp_short > 0.0 ? 1.0 : -1.0,
+              features.mid,
+              market::price_to_double(event.bid),
+              market::price_to_double(event.ask),
+              true,
+              false,
+              no_base,
+          });
+        }
+
         if (prediction.has_signal()) {
           ++stats_.signals;
           ++stats_.predictions_usable;
-          const std::size_t horizon =
-              prediction.horizon_events > 0 ? prediction.horizon_events : 1;
+          const bool no_all =
+              use_time_h ? (event.source_time_ns >= next_non_overlap_time_all_)
+                         : (features.event_index >= next_non_overlap_event_all_);
+          if (no_all) {
+            next_non_overlap_event_all_ = target_ev;
+            next_non_overlap_time_all_ = target_ns;
+          }
+          bool no_kind = false;
+          if (prediction.kind == prediction::SignalKind::Continuation) {
+            no_kind = use_time_h ? (event.source_time_ns >= next_non_overlap_time_cont_)
+                                 : (features.event_index >= next_non_overlap_event_cont_);
+            if (no_kind) {
+              next_non_overlap_event_cont_ = target_ev;
+              next_non_overlap_time_cont_ = target_ns;
+            }
+          } else if (prediction.kind == prediction::SignalKind::Reversal) {
+            no_kind = use_time_h ? (event.source_time_ns >= next_non_overlap_time_rev_)
+                                 : (features.event_index >= next_non_overlap_event_rev_);
+            if (no_kind) {
+              next_non_overlap_event_rev_ = target_ev;
+              next_non_overlap_time_rev_ = target_ns;
+            }
+          }
           pending_signal_evals_.push_back(PendingSignalEval{
-              features.event_index + horizon,
-              event.source_time_ns + config_.eval_horizon_ns,
+              target_ev,
+              target_ns,
               prediction.kind,
               prediction.direction >= 0.0 ? 1.0 : -1.0,
               features.mid,
               market::price_to_double(event.bid),
               market::price_to_double(event.ask),
+              false,
+              no_all,
+              no_kind,
           });
         }
 

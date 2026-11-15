@@ -12,6 +12,7 @@
 // observed quotes, and any real order-flow information.
 #pragma once
 
+#include <cmath>
 #include <cstdint>
 #include <deque>
 #include <istream>
@@ -69,6 +70,12 @@ struct SignalHorizonStats {
   double sum_signed_mid_move = 0.0;
   double sum_net_spread_move = 0.0;
 
+  // Autocorrelation-robust statistics over strictly non-overlapping horizon blocks.
+  std::size_t non_overlapping = 0;
+  std::size_t non_overlapping_hits = 0;
+  double non_overlapping_mean_spread = 0.0;
+  double non_overlapping_m2_spread = 0.0;
+
   double hit_rate() const {
     return evaluated > 0 ? static_cast<double>(hits) / static_cast<double>(evaluated) : 0.0;
   }
@@ -77,6 +84,24 @@ struct SignalHorizonStats {
   }
   double mean_net_spread_move() const {
     return evaluated > 0 ? sum_net_spread_move / static_cast<double>(evaluated) : 0.0;
+  }
+  double non_overlapping_hit_rate() const {
+    return non_overlapping > 0
+               ? static_cast<double>(non_overlapping_hits) / static_cast<double>(non_overlapping)
+               : 0.0;
+  }
+  double non_overlapping_std_spread() const {
+    return non_overlapping > 1
+               ? std::sqrt(non_overlapping_m2_spread / static_cast<double>(non_overlapping - 1))
+               : 0.0;
+  }
+  double non_overlapping_t_stat() const {
+    const double s = non_overlapping_std_spread();
+    if (non_overlapping < 2 || s <= 0.0) {
+      return 0.0;
+    }
+    return non_overlapping_mean_spread /
+           (s / std::sqrt(static_cast<double>(non_overlapping)));
   }
 };
 
@@ -128,6 +153,7 @@ struct ReplayStats {
   SignalHorizonStats forward_all;
   SignalHorizonStats forward_continuation;
   SignalHorizonStats forward_reversal;
+  SignalHorizonStats forward_baseline;  // naive always-continue-in-disp_short baseline
 
   // --- decisions ---
   std::size_t decisions_allowed = 0;
@@ -205,6 +231,9 @@ class ReplayEngine {
     double entry_mid = 0.0;
     double entry_bid = 0.0;
     double entry_ask = 0.0;
+    bool is_baseline = false;
+    bool non_overlapping_all = false;
+    bool non_overlapping_kind = false;
   };
 
   void handle_order_events(std::int64_t now_ns, market::Price bid, market::Price ask);
@@ -244,6 +273,14 @@ class ReplayEngine {
 
   std::size_t position_held_events_ = 0;
   std::int64_t position_opened_time_ns_ = 0;
+  std::uint64_t next_non_overlap_event_all_ = 0;
+  std::uint64_t next_non_overlap_event_cont_ = 0;
+  std::uint64_t next_non_overlap_event_rev_ = 0;
+  std::uint64_t next_non_overlap_event_base_ = 0;
+  std::int64_t next_non_overlap_time_all_ = 0;
+  std::int64_t next_non_overlap_time_cont_ = 0;
+  std::int64_t next_non_overlap_time_rev_ = 0;
+  std::int64_t next_non_overlap_time_base_ = 0;
   std::uint64_t signal_digest_ = 14695981039346656037ULL;
 
   telemetry::LatencyRecorder event_latency_;

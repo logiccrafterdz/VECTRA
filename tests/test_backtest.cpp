@@ -300,6 +300,9 @@ VT_TEST(Replay, ForwardSignalStatsAreEvaluatedCausally) {
                stats.forward_continuation.evaluated + stats.forward_reversal.evaluated);
   // In a monotonic uptrend, continuation signals have a positive mid move.
   VT_ASSERT_TRUE(stats.forward_continuation.mean_signed_mid_move() > 0.0);
+  VT_ASSERT_TRUE(stats.forward_all.non_overlapping > 0);
+  VT_ASSERT_TRUE(stats.forward_all.non_overlapping < stats.forward_all.evaluated);
+  VT_ASSERT_TRUE(stats.forward_baseline.evaluated >= stats.forward_all.evaluated);
 }
 
 VT_TEST(Replay, HorizonExitClosesOpenPositionAfterConfiguredEvents) {
