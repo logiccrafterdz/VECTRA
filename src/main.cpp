@@ -138,7 +138,9 @@ int main(int argc, char** argv) {
   }
 
   if (options.friction_pips >= 0.0) {
-    const double pip_size = (settings.replay.instrument == "USDJPY") ? 0.01 : 0.0001;
+    const std::string symbol =
+        !settings.instrument.empty() ? settings.instrument : settings.replay.instrument;
+    const double pip_size = (symbol == "USDJPY") ? 0.01 : 0.0001;
     const double comm = 0.05 * pip_size;
     const double slip = std::max(0.0, (options.friction_pips - 0.10) / 2.0) * pip_size;
     settings.replay.risk.commission = comm;

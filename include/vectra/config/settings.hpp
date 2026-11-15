@@ -15,6 +15,10 @@ namespace vectra::config {
 struct Settings {
   std::string instrument = "EURUSD";
   backtest::ReplayConfig replay;
+
+  Settings() {
+    replay.instrument = instrument;
+  }
 };
 
 // Built-in defaults; also the fallback for missing keys.

@@ -203,6 +203,7 @@ bool overlay_settings(const Json& root, Settings* out, std::string* error) {
     return false;
   }
   out->instrument = root.get_string("instrument", out->instrument);
+  out->replay.instrument = out->instrument;
   out->replay.validation.expected_symbol = out->instrument;
 
   apply_validation(root, &out->replay);

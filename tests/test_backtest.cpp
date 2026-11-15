@@ -415,3 +415,79 @@ VT_TEST(Replay, SignalHorizonStatsWelfordFormulas) {
   VT_ASSERT_NEAR(s.non_overlapping_std_mid(), 2.581988897, 1e-6);
   VT_ASSERT_NEAR(s.non_overlapping_gross_t_stat(), 3.872983346, 1e-6);
 }
+
+VT_TEST(Replay, ScaleInvariancePreservesSignalsStatsAndScaledPnl) {
+  // Base EUR/USD config
+  ReplayConfig eur_cfg = test_config();
+  eur_cfg.instrument = "EURUSD";
+  eur_cfg.validation.expected_symbol = "EURUSD";
+  eur_cfg.validation.max_spread = vectra::market::double_to_price(0.00030);
+  eur_cfg.risk.commission = 5e-6;
+  eur_cfg.risk.slippage = 1e-5;
+  eur_cfg.risk.max_spread = 0.00025;
+  eur_cfg.risk.order_units = 10000.0;
+  eur_cfg.risk.max_position_units = 20000.0;
+  eur_cfg.risk.max_exposure = 50000.0;
+  eur_cfg.risk.max_daily_loss = 250.0;
+  eur_cfg.broker.commission_per_unit = 5e-6;
+  eur_cfg.broker.slippage = 1e-5;
+  eur_cfg.initial_capital = 100000.0;
+  eur_cfg.stop_loss_price = 0.0008;
+  eur_cfg.take_profit_price = 0.0012;
+  eur_cfg.eval_horizon_ns = 50000000;
+  eur_cfg.prediction.horizon_events = 5;
+
+  // 100x USD/JPY scaled config
+  ReplayConfig jpy_cfg = test_config();
+  jpy_cfg.instrument = "USDJPY";
+  jpy_cfg.validation.expected_symbol = "USDJPY";
+  jpy_cfg.validation.max_spread = vectra::market::double_to_price(0.030);
+  jpy_cfg.risk.commission = 0.0005;
+  jpy_cfg.risk.slippage = 0.0010;
+  jpy_cfg.risk.max_spread = 0.025;
+  jpy_cfg.risk.order_units = 10000.0;
+  jpy_cfg.risk.max_position_units = 20000.0;
+  jpy_cfg.risk.max_exposure = 5000000.0;
+  jpy_cfg.risk.max_daily_loss = 25000.0;
+  jpy_cfg.broker.commission_per_unit = 0.0005;
+  jpy_cfg.broker.slippage = 0.0010;
+  jpy_cfg.initial_capital = 10000000.0;
+  jpy_cfg.stop_loss_price = 0.08;
+  jpy_cfg.take_profit_price = 0.12;
+  jpy_cfg.eval_horizon_ns = 50000000;
+  jpy_cfg.prediction.horizon_events = 5;
+
+  auto eur_events = trending_walk(250);
+  std::vector<vectra::market::MarketEvent> jpy_events;
+  jpy_events.reserve(eur_events.size());
+  for (const auto& ev : eur_events) {
+    auto j_ev = ev;
+    j_ev.symbol = "USDJPY";
+    const double b = vectra::market::price_to_double(ev.bid) * 100.0;
+    const double a = vectra::market::price_to_double(ev.ask) * 100.0;
+    j_ev.bid = vectra::market::double_to_price(b);
+    j_ev.ask = vectra::market::double_to_price(a);
+    jpy_events.push_back(j_ev);
+  }
+
+  ReplayEngine eur_engine(eur_cfg);
+  std::istringstream eur_in(to_csv(eur_events));
+  const ReplayStats eur_stats = eur_engine.run(eur_in, "eur");
+
+  ReplayEngine jpy_engine(jpy_cfg);
+  std::istringstream jpy_in(to_csv(jpy_events));
+  const ReplayStats jpy_stats = jpy_engine.run(jpy_in, "jpy");
+
+  VT_ASSERT_TRUE(eur_stats.signals > 0);
+  VT_ASSERT_EQ(eur_stats.signals, jpy_stats.signals);
+  VT_ASSERT_EQ(eur_stats.orders_submitted, jpy_stats.orders_submitted);
+  VT_ASSERT_EQ(eur_stats.fills, jpy_stats.fills);
+  VT_ASSERT_EQ(eur_stats.forward_all.non_overlapping, jpy_stats.forward_all.non_overlapping);
+  VT_ASSERT_NEAR(eur_stats.forward_all.non_overlapping_gross_t_stat(),
+                 jpy_stats.forward_all.non_overlapping_gross_t_stat(), 1e-4);
+  VT_ASSERT_NEAR(eur_stats.forward_all.non_overlapping_net_t_stat(),
+                 jpy_stats.forward_all.non_overlapping_net_t_stat(), 1e-4);
+  VT_ASSERT_NEAR(eur_stats.forward_all.non_overlapping_mean_net / 0.0001,
+                 jpy_stats.forward_all.non_overlapping_mean_net / 0.01, 1e-4);
+  VT_ASSERT_NEAR(eur_stats.net_pnl * 100.0, jpy_stats.net_pnl, 1e-2);
+}

@@ -1,7 +1,7 @@
-# VECTRA Large-Scale Empirical Pre-Registration & Falsification Protocol (v1.4)
+# VECTRA Large-Scale Empirical Pre-Registration & Falsification Protocol (v1.5)
 
 **Status**: Pre-Registered & Locked Prior to Data Acquisition  
-**Git Tag**: `prereg-v1.4`  
+**Git Tag**: `prereg-v1.5`  
 **Target Evaluation Period**: 2023-01-01 00:00:00 UTC to 2023-03-31 23:59:59 UTC (Q1 2023, 3 full calendar months)  
 **Target Instruments**: `EURUSD`, `GBPUSD`, `USDJPY`  
 **Test Harness**: [`scripts/run_experiment_suite.py`](../scripts/run_experiment_suite.py)
@@ -48,19 +48,22 @@ $$t_{\text{gross}} = \frac{\bar{R}_{\text{gross\_mid}}}{\text{SE}(\bar{R}_{\text
 
 To prevent post-hoc parameter adjustments across currency pairs with different price conventions, configuration files are explicitly committed prior to data ingestion:
 
-| Instrument | Configuration File | Pip Size | Quote Currency | Absolute Price Parameters | Dimensionless Relative Ratios |
-|---|---|---:|---|---|---|
-| **EURUSD** | [`config/experiment_eurusd.json`](../config/experiment_eurusd.json) | `0.0001` | USD | `max_spread=0.00025`, `edge=1e-4`, `SL=8e-4`, `TP=12e-4`, `comm=5e-6`, `slip=1e-5` | `spread_warn=0.00025`, `spread_ref=0.00020` |
-| **GBPUSD** | [`config/experiment_gbpusd.json`](../config/experiment_gbpusd.json) | `0.0001` | USD | `max_spread=0.00030`, `edge=1e-4`, `SL=8e-4`, `TP=12e-4`, `comm=5e-6`, `slip=1e-5` | `spread_warn=0.00030`, `spread_ref=0.00020` |
-| **USDJPY** | [`config/experiment_usdjpy.json`](../config/experiment_usdjpy.json) | `0.01` | JPY | `max_spread=0.025`, `edge=0.01`, `SL=0.08`, `TP=0.12`, `comm=0.0005`, `slip=0.0010` | `spread_warn=0.00025`, `spread_ref=0.00020` |
+| Instrument | Configuration File | Pip Size | Quote Currency | Absolute Price Parameters | Dimensionless Relative Ratios | Currency-Denominated Limits |
+|---|---|---:|---|---|---|---|
+| **EURUSD** | [`config/experiment_eurusd.json`](../config/experiment_eurusd.json) | `0.0001` | USD | `max_spread=0.00025`, `edge=1e-4`, `SL=8e-4`, `TP=12e-4`, `comm=5e-6`, `slip=1e-5` | `spread_warn=0.00025`, `spread_ref=0.00020` | `exposure=5e4`, `daily_loss=250`, `capital=1e5` |
+| **GBPUSD** | [`config/experiment_gbpusd.json`](../config/experiment_gbpusd.json) | `0.0001` | USD | `max_spread=0.00030`, `edge=1e-4`, `SL=8e-4`, `TP=12e-4`, `comm=5e-6`, `slip=1e-5` | `spread_warn=0.00030`, `spread_ref=0.00020` | `exposure=5e4`, `daily_loss=250`, `capital=1e5` |
+| **USDJPY** | [`config/experiment_usdjpy.json`](../config/experiment_usdjpy.json) | `0.01` | JPY | `max_spread=0.025`, `edge=0.01`, `SL=0.08`, `TP=0.12`, `comm=0.0005`, `slip=0.0010` | `spread_warn=0.00025`, `spread_ref=0.00020` | `exposure=5e6`, `daily_loss=2.5e4`, `capital=1e7` |
 
-### Explicit Parameter Scaling Distinction
-1. **Absolute Price Parameters**: Fields measured in price units (`max_spread`, `commission`, `slippage`, `min_expected_edge`, `stop_loss_price`, `take_profit_price`) scale proportionally with `pip_size`:
+### Explicit Parameter Scaling Distinction (Three Categories)
+1. **Category 1: Absolute Price Parameters**: Fields measured in price units (`max_spread`, `commission`, `slippage`, `min_expected_edge`, `stop_loss_price`, `take_profit_price`) scale proportionally with `pip_size`:
    $$\text{Parameter}_{\text{pair}} = \text{Parameter}_{\text{base (EURUSD)}} \times \left(\frac{\text{pip\_size}_{\text{pair}}}{0.0001}\right)$$
-2. **Dimensionless Relative Ratios**: Fields representing spread as a fraction of mid-price (`spread_warn_ratio = 0.00025`, `spread_reference_ratio = 0.00020`) in `behavior_engine.cpp`:
+2. **Category 2: Dimensionless Relative Ratios**: Fields representing spread as a fraction of mid-price (`spread_warn_ratio = 0.00025`, `spread_reference_ratio = 0.00020`) in `behavior_engine.cpp`:
    $$f.\text{spread\_ratio} = \frac{\text{spread}}{\text{mid}}$$
    These are pure basis-point fractions (2.5 bps and 2.0 bps) and **must NOT be scaled by `pip_size`**. Scaling them by 100 on USD/JPY would set the warning spread threshold to 330 pips, effectively disabling spread filtering.
-3. **P&L Denomination**: P&L is denominated in the **quote currency** of the traded pair (USD for EUR/USD and GBP/USD; JPY for USD/JPY).
+3. **Category 3: Currency-Denominated Limits and Capital**: Fields denominated in quote currency (`max_exposure`, `max_daily_loss`, `initial_capital`) scale by the pip-value ratio. For a standard order size of 10,000 units, 1 pip is 1.00 USD for EUR/USD and 100.00 JPY for USD/JPY. Thus, on USD/JPY these parameters scale by $100\times$:
+   $$\text{max\_exposure} = 5,000,000\text{ JPY}, \quad \text{max\_daily\_loss} = 25,000\text{ JPY}, \quad \text{initial\_capital} = 10,000,000\text{ JPY}$$
+   This guarantees that position sizing (`max_exposure / mid`), daily loss limits, and account equity are strictly scale-invariant across pairs.
+4. **P&L Denomination**: P&L is denominated in the **quote currency** of the traded pair (USD for EUR/USD and GBP/USD; JPY for USD/JPY).
 
 ---
 
@@ -152,7 +155,8 @@ Prior to downloading Q1 2023 data, the complete experimental pipeline was verifi
 - Verified that the monotonic fixed-execution curve is strictly decreasing.
 - Verified that the USD/JPY pip scaling correctly scales by $100\times$ (`1.0 / 0.01`) and reports P&L in JPY.
 - Verified that Gross Directional Skill t-stat directly measures signed midpoint movement.
-- Verified that all 119 unit tests and Python tier classification self-tests pass cleanly.
+- Verified rigorous **Scale Invariance** via CTest unit test: multiplying price feeds by $100\times$ under the USD/JPY configuration preserves exact signal counts, order counts, fill counts, $t$-statistics, and scales Net P&L by exactly $100.00\times$ ($19.70\text{ USD} \to 1970.00\text{ JPY}$).
+- Verified that all 120 unit tests and Python tier classification self-tests pass cleanly.
 
 ---
 
