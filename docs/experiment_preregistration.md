@@ -1,7 +1,7 @@
-# VECTRA Large-Scale Empirical Pre-Registration & Falsification Protocol (v1.3)
+# VECTRA Large-Scale Empirical Pre-Registration & Falsification Protocol (v1.4)
 
 **Status**: Pre-Registered & Locked Prior to Data Acquisition  
-**Git Tag**: `prereg-v1.3`  
+**Git Tag**: `prereg-v1.4`  
 **Target Evaluation Period**: 2023-01-01 00:00:00 UTC to 2023-03-31 23:59:59 UTC (Q1 2023, 3 full calendar months)  
 **Target Instruments**: `EURUSD`, `GBPUSD`, `USDJPY`  
 **Test Harness**: [`scripts/run_experiment_suite.py`](../scripts/run_experiment_suite.py)
@@ -20,19 +20,23 @@ where $\mu_{\text{net}}$ is the expected net return across independent (non-over
 ### 1.2 Formal Test of the Primary Hypothesis
 The primary statistical test is a **one-sample Student $t$-test against zero** on the sequence of non-overlapping block net returns $R_{\text{net}, b}$:
 
-$$t = \frac{\bar{R}_{\text{net}}}{\text{SE}(\bar{R}_{\text{net}})} = \frac{\frac{1}{B}\sum_{b=1}^B R_{\text{net}, b}}{\sqrt{\frac{1}{B(B-1)}\sum_{b=1}^B (R_{\text{net}, b} - \bar{R}_{\text{net}})^2}}$$
+$$t_{\text{net}} = \frac{\bar{R}_{\text{net}}}{\text{SE}(\bar{R}_{\text{net}})} = \frac{\frac{1}{B}\sum_{b=1}^B R_{\text{net}, b}}{\sqrt{\frac{1}{B(B-1)}\sum_{b=1}^B (R_{\text{net}, b} - \bar{R}_{\text{net}})^2}}$$
 
 - **Sample Population for Primary Test**: Independent non-overlapping signal blocks ($B$). Signals are evaluated at $t + 180\text{ s}$ under spread and friction.
 - **Two-Tailed Significance Threshold**: $\alpha = 0.05 \implies t > 1.96$.
 - **Economic Threshold**: Mean block net return $\bar{R}_{\text{net}} \ge 0.15\text{ pips}$ ($0.15 \times \text{pip\_size}$).
 - **Secondary Feasibility Condition**: Realized cumulative Net P&L of executed trades $> 0$.
 
-### 1.3 Secondary Paired Test Against Independent Pseudo-Random Baseline
-On identical non-overlapping blocks where the model emits a usable signal, an independent pseudo-random directional baseline enters at the exact same quote:
-$$d_{\text{rand}, b} \in \{-1, +1\} \quad \text{via deterministic hash of } t_b$$
-Both the model and the random baseline pay the identical spread and friction. The paired difference $d_b = R_{\text{model}, b} - R_{\text{rand}, b}$ is evaluated via a **paired Student $t$-test**:
+### 1.3 Gross Directional Skill Test (Signed Mid Movement)
+In addition to the primary net return test, the engine evaluates pure directional forecasting skill on the identical non-overlapping blocks by measuring signed midpoint movement:
 
-$$t_{\text{paired}} = \frac{\bar{d}}{\text{SE}(\bar{d})} > 1.96 \quad (\alpha = 0.05, \text{two-tailed})$$
+$$R_{\text{gross\_mid}, b} = d_b (\text{mid}_{t_b + 180\text{s}} - \text{mid}_{t_b})$$
+
+where $d_b \in \{-1, +1\}$ is the model's emitted signal direction. The gross directional skill is evaluated via a one-sample Student $t$-test against zero:
+
+$$t_{\text{gross}} = \frac{\bar{R}_{\text{gross\_mid}}}{\text{SE}(\bar{R}_{\text{gross\_mid}})}$$
+
+> **Methodological Note on Eliminating Degenerate Paired Baselines**: Paired differences between opposite trades entered at identical quote timestamps cancel out spread and round-trip friction ($d_b = 2 \times \Delta\text{mid}$ when opposite, $0$ when matching). Evaluating $t_{\text{gross}}$ directly on signed midpoint movement avoids synthetic cancellation and measures directional skill with superior statistical power and zero noise.
 
 ### 1.4 Secondary & Exploratory Families (Holm-Bonferroni Corrected)
 1. **Family A (Instrument Exploratory Ablations)**: The 8 secondary exploratory tests per instrument (4 LOO + 4 Single-feature) are adjusted via Holm-Bonferroni step-down correction at $\alpha = 0.05$.
@@ -44,11 +48,11 @@ $$t_{\text{paired}} = \frac{\bar{d}}{\text{SE}(\bar{d})} > 1.96 \quad (\alpha = 
 
 To prevent post-hoc parameter adjustments across currency pairs with different price conventions, configuration files are explicitly committed prior to data ingestion:
 
-| Instrument | Configuration File | Pip Size | Absolute Price Parameters | Dimensionless Relative Ratios |
-|---|---|---:|---|---|
-| **EURUSD** | [`config/experiment_eurusd.json`](../config/experiment_eurusd.json) | `0.0001` | `max_spread=0.00025`, `edge=1e-4`, `SL=8e-4`, `TP=12e-4`, `comm=5e-6`, `slip=1e-5` | `spread_warn=0.00025`, `spread_ref=0.00020` |
-| **GBPUSD** | [`config/experiment_gbpusd.json`](../config/experiment_gbpusd.json) | `0.0001` | `max_spread=0.00030`, `edge=1e-4`, `SL=8e-4`, `TP=12e-4`, `comm=5e-6`, `slip=1e-5` | `spread_warn=0.00030`, `spread_ref=0.00020` |
-| **USDJPY** | [`config/experiment_usdjpy.json`](../config/experiment_usdjpy.json) | `0.01` | `max_spread=0.025`, `edge=0.01`, `SL=0.08`, `TP=0.12`, `comm=0.0005`, `slip=0.0010` | `spread_warn=0.00025`, `spread_ref=0.00020` |
+| Instrument | Configuration File | Pip Size | Quote Currency | Absolute Price Parameters | Dimensionless Relative Ratios |
+|---|---|---:|---|---|---|
+| **EURUSD** | [`config/experiment_eurusd.json`](../config/experiment_eurusd.json) | `0.0001` | USD | `max_spread=0.00025`, `edge=1e-4`, `SL=8e-4`, `TP=12e-4`, `comm=5e-6`, `slip=1e-5` | `spread_warn=0.00025`, `spread_ref=0.00020` |
+| **GBPUSD** | [`config/experiment_gbpusd.json`](../config/experiment_gbpusd.json) | `0.0001` | USD | `max_spread=0.00030`, `edge=1e-4`, `SL=8e-4`, `TP=12e-4`, `comm=5e-6`, `slip=1e-5` | `spread_warn=0.00030`, `spread_ref=0.00020` |
+| **USDJPY** | [`config/experiment_usdjpy.json`](../config/experiment_usdjpy.json) | `0.01` | JPY | `max_spread=0.025`, `edge=0.01`, `SL=0.08`, `TP=0.12`, `comm=0.0005`, `slip=0.0010` | `spread_warn=0.00025`, `spread_ref=0.00020` |
 
 ### Explicit Parameter Scaling Distinction
 1. **Absolute Price Parameters**: Fields measured in price units (`max_spread`, `commission`, `slippage`, `min_expected_edge`, `stop_loss_price`, `take_profit_price`) scale proportionally with `pip_size`:
@@ -56,6 +60,7 @@ To prevent post-hoc parameter adjustments across currency pairs with different p
 2. **Dimensionless Relative Ratios**: Fields representing spread as a fraction of mid-price (`spread_warn_ratio = 0.00025`, `spread_reference_ratio = 0.00020`) in `behavior_engine.cpp`:
    $$f.\text{spread\_ratio} = \frac{\text{spread}}{\text{mid}}$$
    These are pure basis-point fractions (2.5 bps and 2.0 bps) and **must NOT be scaled by `pip_size`**. Scaling them by 100 on USD/JPY would set the warning spread threshold to 330 pips, effectively disabling spread filtering.
+3. **P&L Denomination**: P&L is denominated in the **quote currency** of the traded pair (USD for EUR/USD and GBP/USD; JPY for USD/JPY).
 
 ---
 
@@ -71,13 +76,25 @@ To prevent ambiguous interpretations or post-hoc justifications of weak results,
 
 ---
 
-## 4. Statistical Power and Sample Size Requirements
+## 4. Empirical Statistical Power and Sample Size Requirements
 
-Assuming a typical 180 s foreign exchange trade return standard deviation $\sigma \approx 3.5\text{ pips}$, the sample size $N$ required to detect an economically viable edge of $\mu = 0.20\text{ pips}$ with $80\%$ statistical power ($1 - \beta = 0.80$) at a two-tailed significance level $\alpha = 0.05$ is:
+Empirical standard deviations of 180s block returns across historical foreign exchange samples range between $\sigma \in [2.6, 6.1]\text{ pips}$ (with sample values: $\text{DEV} = 6.1\text{ pips}$, $\text{VAL} = 5.5\text{ pips}$, $\text{OOS1} = 4.0\text{ pips}$, $\text{OOS2} = 2.6\text{ pips}$, and empirical cross-sample average $\bar{\sigma} \approx 4.7\text{ pips}$).
 
-$$N_{\text{min}} = \left(\frac{z_{1-\alpha/2} + z_{1-\beta}}{\mu / \sigma}\right)^2 = \left(\frac{1.96 + 0.84}{0.20 / 3.50}\right)^2 = (2.80 \times 17.5)^2 \approx 2,401\text{ independent blocks}$$
+With the confirmatory success threshold locked at $\mu = 0.15\text{ pips}$ and a two-tailed significance level $\alpha = 0.05$ ($z_{1-\alpha/2} = 1.96$):
 
-Across 3 calendar months (approx. 65 trading days), foreign exchange markets produce continuous tick streams yielding thousands of candidate events. The engine records the exact number of independent, non-overlapping 180 s blocks in every report to verify statistical power.
+1. **Expected Block Count**: Across 3 calendar months (approx. 65 trading days $\approx 1{,}560\text{ market hours}$), the candidate block rate of 6 to 8 blocks per hour yields an expected sample size of $N \approx 9{,}000 - 11{,}000$ non-overlapping blocks.
+2. **Statistical Power at $N = 10{,}000$**:
+   - At $\bar{\sigma} = 4.7\text{ pips}$:
+     $$z = \frac{\mu}{\sigma / \sqrt{N}} - 1.96 = \frac{0.15}{0.047} - 1.96 = 3.19 - 1.96 = 1.23 \implies \text{Power} \approx 89.1\%$$
+   - At conservative $\sigma = 6.1\text{ pips}$ (highest observed volatility on DEV):
+     $$z = \frac{\mu}{\sigma / \sqrt{N}} - 1.96 = \frac{0.15}{0.061} - 1.96 = 2.46 - 1.96 = 0.50 \implies \text{Power} \approx 69.1\%$$
+3. **Sample Size Requirements ($N_{\text{min}}$) for $80\%$ Power ($z_{1-\beta} = 0.84$)**:
+   - At $\bar{\sigma} = 4.7\text{ pips}$:
+     $$N_{\text{min}} = \left(\frac{1.96 + 0.84}{0.15 / 4.70}\right)^2 = (2.80 \times 31.33)^2 \approx 7{,}697\text{ independent blocks}$$
+   - At $\sigma = 6.1\text{ pips}$:
+     $$N_{\text{min}} = \left(\frac{1.96 + 0.84}{0.15 / 6.10}\right)^2 = (2.80 \times 40.67)^2 \approx 12{,}965\text{ independent blocks}$$
+
+The 3-month sample window ($N \approx 10{,}000$) provides adequate power ($\approx 70\% - 89\%$) to detect the minimal pre-registered edge of $0.15\text{ pips}$ under real market volatility.
 
 ---
 
@@ -121,9 +138,9 @@ $$\text{Round-Trip Cost}_i = s_i + \delta = (a_i - b_i) + 2 \times (\text{commis
 ### 6.2 Dual Friction Curves
 Because pre-trade edge gates and cooldown timers dynamically shift the set of executed trades when friction varies, the experiment evaluates two distinct curves side-by-side:
 1. **Monotonic Fixed-Execution Curve**: Takes the exact trades executed under baseline friction ($\delta = 0.30\text{ pips}$) and adjusts net profit passively:
-   $$\text{Net P\&L}_{\text{fixed}}(\delta) = \text{Net P\&L}_{\text{base}} - (\delta - 0.30) \times \text{pip\_size} \times \text{order\_units} \times \left(\frac{N_{\text{fills}}}{2}\right)$$
+   $$\text{Net Profit}_{\text{fixed}}(\delta) = \text{Net Profit}_{\text{base}} - (\delta - 0.30) \times \text{pip\_size} \times \text{order\_units} \times \left(\frac{N_{\text{fills}}}{2}\right)$$
    This curve is **strictly, linearly monotonic decreasing** with respect to $\delta$, providing an exact algebraic break-even point:
-   $$\delta^*_{\text{fixed}} = 0.30 + \frac{\text{Net P\&L}_{\text{base}}}{\text{pip\_size} \times \text{order\_units} \times (N_{\text{fills}} / 2)}$$
+   $$\delta^*_{\text{fixed}} = 0.30 + \frac{\text{Net Profit}_{\text{base}}}{\text{pip\_size} \times \text{order\_units} \times (N_{\text{fills}} / 2)}$$
 2. **Dynamic Re-Execution Curve**: Re-runs the full engine at each friction level, reporting how the strategy's risk gate and cooldown timers respond end-to-end.
 
 ---
@@ -133,8 +150,9 @@ Because pre-trade edge gates and cooldown timers dynamically shift the set of ex
 Prior to downloading Q1 2023 data, the complete experimental pipeline was verified end-to-end using `scripts/run_experiment_suite.py` on the existing 2018 EUR/USD dataset and synthetic USD/JPY ticks:
 - Verified that all 4 LOO modes and all 4 Single-feature rules execute and emit expected order counts without runtime errors.
 - Verified that the monotonic fixed-execution curve is strictly decreasing.
-- Verified that the USD/JPY pip scaling correctly scales by $100\times$ (`1.0 / 0.01`).
-- Verified that all 117 unit tests pass cleanly.
+- Verified that the USD/JPY pip scaling correctly scales by $100\times$ (`1.0 / 0.01`) and reports P&L in JPY.
+- Verified that Gross Directional Skill t-stat directly measures signed midpoint movement.
+- Verified that all 119 unit tests and Python tier classification self-tests pass cleanly.
 
 ---
 

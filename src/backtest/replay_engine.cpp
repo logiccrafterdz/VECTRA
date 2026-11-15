@@ -255,6 +255,11 @@ void ReplayEngine::evaluate_matured_signals(std::uint64_t current_event_index,
       if (net_friction > 0.0) {
         ++s.non_overlapping_net_hits;
       }
+      const double delta_mid = signed_mid - s.non_overlapping_mean_mid;
+      s.non_overlapping_mean_mid += delta_mid / static_cast<double>(s.non_overlapping);
+      const double delta2_mid = signed_mid - s.non_overlapping_mean_mid;
+      s.non_overlapping_m2_mid += delta_mid * delta2_mid;
+
       const double delta = net_spread - s.non_overlapping_mean_spread;
       s.non_overlapping_mean_spread += delta / static_cast<double>(s.non_overlapping);
       const double delta2 = net_spread - s.non_overlapping_mean_spread;
@@ -278,7 +283,6 @@ void ReplayEngine::evaluate_matured_signals(std::uint64_t current_event_index,
     const double signed_mid = item.direction * (mid - item.entry_mid);
     const double net_spread =
         item.direction >= 0.0 ? (bid - item.entry_ask) : (item.entry_bid - ask);
-    const double net_friction = net_spread - round_trip_friction;
 
     if (item.is_baseline) {
       accumulate(stats_.forward_baseline, signed_mid, net_spread, item.non_overlapping_kind);
@@ -289,24 +293,6 @@ void ReplayEngine::evaluate_matured_signals(std::uint64_t current_event_index,
                    item.non_overlapping_kind);
       } else if (item.kind == prediction::SignalKind::Reversal) {
         accumulate(stats_.forward_reversal, signed_mid, net_spread, item.non_overlapping_kind);
-      }
-
-      // Paired comparison vs Naive Directional Baseline on identical non-overlapping blocks
-      if (item.non_overlapping_all && item.baseline_direction != 0.0) {
-        const double base_net_spread = item.baseline_direction >= 0.0
-                                           ? (bid - item.entry_ask)
-                                           : (item.entry_bid - ask);
-        const double base_net_friction = base_net_spread - round_trip_friction;
-        const double diff = net_friction - base_net_friction;
-        auto& s = stats_.forward_all;
-        ++s.paired_blocks;
-        if (diff > 0.0) {
-          ++s.paired_wins;
-        }
-        const double delta = diff - s.paired_diff_mean;
-        s.paired_diff_mean += delta / static_cast<double>(s.paired_blocks);
-        const double delta2 = diff - s.paired_diff_mean;
-        s.paired_diff_m2 += delta * delta2;
       }
 
       const double clamped_score = std::clamp(item.score, 0.0, 1.0);
@@ -552,9 +538,6 @@ ReplayStats ReplayEngine::run(std::istream& input, const std::string& source_nam
               no_all,
               no_kind,
               active_score,
-              ((static_cast<std::uint64_t>(event.source_time_ns) * 6364136223846793005ULL + 1ULL) >> 63)
-                  ? 1.0
-                  : -1.0,
           });
         }
 

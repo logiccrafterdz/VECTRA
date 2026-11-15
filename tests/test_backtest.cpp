@@ -357,7 +357,7 @@ VT_TEST(Replay, StopLossAndTakeProfitExitsAreTriggered) {
   VT_ASSERT_TRUE(sl_stats.stop_loss_exits_submitted > 0);
 }
 
-VT_TEST(Replay, NonOverlappingBlocksComputeNetAndPairedStats) {
+VT_TEST(Replay, NonOverlappingBlocksComputeNetAndGrossStats) {
   ReplayConfig cfg = test_config();
   cfg.eval_horizon_ns = 50000000; // 50ms horizon
   cfg.prediction.horizon_events = 5;
@@ -367,10 +367,51 @@ VT_TEST(Replay, NonOverlappingBlocksComputeNetAndPairedStats) {
 
   VT_ASSERT_TRUE(stats.forward_all.evaluated > 0);
   VT_ASSERT_TRUE(stats.forward_all.non_overlapping > 0);
+  VT_ASSERT_TRUE(stats.forward_all.non_overlapping_mean_mid != 0.0);
   VT_ASSERT_TRUE(stats.forward_all.non_overlapping_mean_spread != 0.0);
-  // Net return deducting friction must be computed
+  // Net return deducting friction must be computed and less than gross mid move
   VT_ASSERT_TRUE(stats.forward_all.non_overlapping_mean_net <=
                  stats.forward_all.non_overlapping_mean_spread);
-  // Paired blocks against naive baseline must be recorded
-  VT_ASSERT_TRUE(stats.forward_all.paired_blocks > 0);
+  VT_ASSERT_TRUE(stats.forward_all.non_overlapping_mean_spread <=
+                 stats.forward_all.non_overlapping_mean_mid);
+  if (stats.forward_all.non_overlapping >= 2) {
+    VT_ASSERT_TRUE(stats.forward_all.non_overlapping_gross_t_stat() != 0.0);
+    VT_ASSERT_TRUE(stats.forward_all.non_overlapping_net_t_stat() != 0.0);
+  }
+}
+
+VT_TEST(Replay, GrossDirectionalSkillAndNetEdgeAreDistinct) {
+  ReplayConfig cfg = test_config();
+  cfg.eval_horizon_ns = 100000000; // 100ms
+  cfg.prediction.horizon_events = 10;
+  cfg.risk.commission = 0.00005;
+  cfg.risk.slippage = 0.00005;
+  ReplayEngine engine(cfg);
+  std::istringstream in(to_csv(trending_walk(300)));
+  const ReplayStats stats = engine.run(in, "gross-vs-net");
+
+  VT_ASSERT_TRUE(stats.forward_all.non_overlapping >= 2);
+  // Gross mid movement does not pay spread or commission/slippage, so it must strictly exceed net return
+  VT_ASSERT_TRUE(stats.forward_all.non_overlapping_mean_mid >
+                 stats.forward_all.non_overlapping_mean_net);
+}
+
+VT_TEST(Replay, SignalHorizonStatsWelfordFormulas) {
+  vectra::backtest::SignalHorizonStats s;
+  // Feed 4 synthetic non-overlapping observations: signed_mid = {2.0, 4.0, 6.0, 8.0}
+  // mean = 5.0, M2 = 20.0, variance = 20 / 3 = 6.666667, std = 2.581988897
+  // t-stat = 5.0 / (2.581988897 / sqrt(4)) = 5.0 / 1.290994449 = 3.872983346
+  const double values[4] = {2.0, 4.0, 6.0, 8.0};
+  for (std::size_t i = 0; i < 4; ++i) {
+    ++s.non_overlapping;
+    const double val = values[i];
+    const double delta = val - s.non_overlapping_mean_mid;
+    s.non_overlapping_mean_mid += delta / static_cast<double>(s.non_overlapping);
+    const double delta2 = val - s.non_overlapping_mean_mid;
+    s.non_overlapping_m2_mid += delta * delta2;
+  }
+
+  VT_ASSERT_NEAR(s.non_overlapping_mean_mid, 5.0, 1e-9);
+  VT_ASSERT_NEAR(s.non_overlapping_std_mid(), 2.581988897, 1e-6);
+  VT_ASSERT_NEAR(s.non_overlapping_gross_t_stat(), 3.872983346, 1e-6);
 }

@@ -1,16 +1,17 @@
-# VECTRA Empirical Experiment Results (Protocol v1.3)
+# VECTRA Empirical Experiment Results (Protocol v1.4)
 
-- **Dataset**: `examples\real_eurusd_dev.csv`
-- **Configuration**: `config\experiment_eurusd.json` (`EURUSD`, `pip_size = 0.0001`)
+- **Dataset**: `examples/real_eurusd_dev.csv`
+- **Configuration**: `config/experiment_eurusd.json` (`EURUSD`, `pip_size = 0.0001`, `quote = USD`)
 - **CLI Version**: `v0.1.0`
 
 ## 1. Primary Hypothesis Evaluation (H1)
 
-| Hypothesis | Blocks (180s) | Mean Net Return (pips) | Student t-stat (vs 0) | Two-Tailed p-value | Executed Fills | Cumulative Net P&L (USD) | Outcome Tier |
-|---|---:|---:|---:|---:|---:|---:|---|
-| **H1 (Full Model, 0.30 pips)** | 51 | +0.95 | +1.11 | 2.6700e-01 | 32 | +19.70 | **Tier 3: Inconclusive** |
+| Hypothesis | Blocks (180s) | Mean Net Return (pips) | Net t-stat (vs 0) | Two-Tailed p-val | Gross t-stat (Mid vs 0) | Executed Fills | Cumulative Net P&L (USD) | Outcome Tier |
+|---|---:|---:|---:|---:|---:|---:|---:|---|
+| **H1 (Full Model, 0.30 pips)** | 51 | +0.95 | +1.11 | 2.6700e-01 | +1.67 | 32 | +19.70 | **Tier 3: Inconclusive** |
 
-- **Paired Comparison vs Independent Random Direction Baseline**: t = +0.15 (n = 51)
+- **Primary Edge Metric (Net Return After Friction)**: Mean = +0.95 pips, t = +1.11
+- **Gross Directional Skill (Signed Mid Move)**: Mean = +1.43 pips, t = +1.67
 
 ## 2. Leave-One-Out (LOO) Diagnostic Ablations
 

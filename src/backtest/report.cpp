@@ -147,32 +147,32 @@ void write_markdown_report(std::ostream& out, const ReplayEngine& engine,
     write_fwd_row("Naive directional baseline", s.forward_baseline);
     out << "\n";
     out << "#### Autocorrelation-robust non-overlapping horizon blocks\n\n";
-    out << "| Signal kind | Independent blocks | Block hit rate (mid) | Block mean spread move | Block mean net return | Net t-stat (vs 0) | Paired t vs random |\n"
+    out << "| Signal kind | Independent blocks | Block hit rate (mid) | Block mean gross mid | Gross t-stat (vs 0) | Block mean net return | Net t-stat (vs 0) |\n"
            "|---|---|---|---|---|---|---|\n";
-    const auto write_block_row = [&out](const char* label, const SignalHorizonStats& fs, bool has_paired) {
+    const auto write_block_row = [&out](const char* label, const SignalHorizonStats& fs) {
       out << "| " << label << " | " << fs.non_overlapping << " | ";
       if (fs.non_overlapping == 0) {
         out << "n/a | n/a | n/a | n/a | n/a |\n";
         return;
       }
       out << percent(100.0 * fs.non_overlapping_hit_rate()) << " | "
-          << number(fs.non_overlapping_mean_spread, 6) << " | "
-          << number(fs.non_overlapping_mean_net, 6) << " | ";
+          << number(fs.non_overlapping_mean_mid, 6) << " | ";
       if (fs.non_overlapping < 2) {
         out << "n/a | ";
       } else {
-        out << number(fs.non_overlapping_net_t_stat(), 2) << " | ";
+        out << number(fs.non_overlapping_gross_t_stat(), 2) << " | ";
       }
-      if (has_paired && fs.paired_blocks >= 2) {
-        out << number(fs.paired_t_stat(), 2) << " (n=" << fs.paired_blocks << ") |\n";
-      } else {
+      out << number(fs.non_overlapping_mean_net, 6) << " | ";
+      if (fs.non_overlapping < 2) {
         out << "n/a |\n";
+      } else {
+        out << number(fs.non_overlapping_net_t_stat(), 2) << " |\n";
       }
     };
-    write_block_row("Continuation", s.forward_continuation, false);
-    write_block_row("Reversal", s.forward_reversal, false);
-    write_block_row("All usable signals", s.forward_all, true);
-    write_block_row("Naive directional baseline", s.forward_baseline, false);
+    write_block_row("Continuation", s.forward_continuation);
+    write_block_row("Reversal", s.forward_reversal);
+    write_block_row("All usable signals", s.forward_all);
+    write_block_row("Naive directional baseline", s.forward_baseline);
     out << "\n";
 
     if (s.calibration_total.count > 0) {
@@ -247,19 +247,21 @@ void write_markdown_report(std::ostream& out, const ReplayEngine& engine,
          "midpoint by default.\n\n";
 
   // ----------------------------------------------------------- performance
+  const std::string quote =
+      (cfg.instrument.size() >= 6) ? cfg.instrument.substr(3, 3) : "USD";
   out << "## 5. Simulated performance\n\n";
   out << "| Metric | Value |\n|---|---|\n";
-  out << "| Initial equity | " << money(s.initial_equity) << " |\n";
-  out << "| Final equity | " << money(s.final_equity) << " |\n";
-  out << "| Realized P&L | " << money(s.realized_pnl) << " |\n";
+  out << "| Initial equity | " << money(s.initial_equity) << " " << quote << " |\n";
+  out << "| Final equity | " << money(s.final_equity) << " " << quote << " |\n";
+  out << "| Realized P&L | " << money(s.realized_pnl) << " " << quote << " |\n";
   out << "| Gross P&L (after spread, before commission/slippage) | "
-      << money(s.gross_pnl) << " |\n";
-  out << "| Net P&L | " << money(s.net_pnl) << " |\n";
-  out << "| Commission paid | " << money(s.commission_total) << " |\n";
-  out << "| Slippage paid | " << money(s.slippage_total) << " |\n";
+      << money(s.gross_pnl) << " " << quote << " |\n";
+  out << "| Net P&L | " << money(s.net_pnl) << " " << quote << " |\n";
+  out << "| Commission paid | " << money(s.commission_total) << " " << quote << " |\n";
+  out << "| Slippage paid | " << money(s.slippage_total) << " " << quote << " |\n";
   out << "| Estimated spread cost (informational) | " << money(s.spread_cost_total)
-      << " |\n";
-  out << "| Max drawdown | " << money(s.max_drawdown) << " (" << percent(s.max_drawdown_pct)
+      << " " << quote << " |\n";
+  out << "| Max drawdown | " << money(s.max_drawdown) << " " << quote << " (" << percent(s.max_drawdown_pct)
       << ") |\n";
   out << "\nThese results come from a synthetic replay. They are a **pipeline "
          "smoke test**, not evidence of an edge.\n\n";

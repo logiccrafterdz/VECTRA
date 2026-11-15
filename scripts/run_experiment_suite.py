@@ -1,19 +1,24 @@
 #!/usr/bin/env python3
-"""
-VECTRA Empirical Experiment Suite (v1.3)
-Automates the pre-registered execution of:
-1. Full Model (Primary Hypothesis H1, 0.30 pips friction)
-2. Leave-One-Out (LOO) Ablations (4 tests)
-3. Single-Feature Isolations (4 tests)
-4. Monotonic Fixed-Execution Friction Curve (0.1 to 1.0 pips)
-5. Dynamic Re-execution Friction Curve (0.1 to 1.0 pips)
-6. Dynamic Holm-Bonferroni correction and Markdown summary tables.
+"""Automated runner for VECTRA Empirical Experiment Suite (Pre-Registration Protocol v1.4).
+
+Executes:
+1. Primary Hypothesis H1 on holdout dataset at 0.30 pips baseline friction.
+   Evaluates both primary Net Return t-stat (vs 0) and Gross Directional Skill t-stat (vs 0)
+   on autocorrelation-robust non-overlapping 180s blocks.
+2. Leave-One-Out (LOO) diagnostic ablations (4 modes).
+3. Single-feature isolation rules (4 modes).
+4. Dual Cost Sensitivity Curves:
+   - Monotonic Fixed-Execution Net P&L (passive accounting on baseline trades, linear decrease).
+   - Dynamic Re-Execution Net P&L (re-running the full engine with modified friction).
+5. Strict Tier Decision Logic:
+   - Tier 1: t > 1.96 AND mean_net_return >= 0.15 pips AND Net P&L > 0.
+   - Tier 2: t <= 0 OR mean_net_return <= 0 OR Net P&L <= 0.
+   - Tier 3: Inconclusive (Gray Zone).
 """
 
 import argparse
 import json
 import math
-import os
 import pathlib
 import re
 import subprocess
@@ -23,6 +28,38 @@ from typing import Dict, List, Optional, Any
 CLI_PATH = pathlib.Path("build/Release/vectra.exe")
 if not CLI_PATH.exists():
     CLI_PATH = pathlib.Path("build/vectra.exe")
+
+
+def classify_tier(t_stat: float, mean_pips: float, net_pnl: float) -> str:
+    """Classifies outcome into Tier 1, Tier 2, or Tier 3 according to pre-registration v1.4."""
+    if t_stat > 1.96 and mean_pips >= 0.15 and net_pnl > 0.0:
+        return "Tier 1: Confirmed Edge"
+    elif t_stat <= 0.0 or mean_pips <= 0.0 or net_pnl <= 0.0:
+        return "Tier 2: Definitive Falsification"
+    else:
+        return "Tier 3: Inconclusive"
+
+
+def test_tier_classification() -> None:
+    """Unit tests for the decision tier classification logic."""
+    # Tier 1: All three conditions met
+    assert classify_tier(2.10, 0.20, 100.0) == "Tier 1: Confirmed Edge"
+    assert classify_tier(1.97, 0.15, 0.01) == "Tier 1: Confirmed Edge"
+
+    # Tier 2: Falsification on any non-positive metric
+    assert classify_tier(-0.50, 0.20, 100.0) == "Tier 2: Definitive Falsification"
+    assert classify_tier(0.0, 0.20, 100.0) == "Tier 2: Definitive Falsification"
+    assert classify_tier(2.10, -0.05, 100.0) == "Tier 2: Definitive Falsification"
+    assert classify_tier(2.10, 0.0, 100.0) == "Tier 2: Definitive Falsification"
+    assert classify_tier(2.10, 0.20, -50.0) == "Tier 2: Definitive Falsification"
+    assert classify_tier(2.10, 0.20, 0.0) == "Tier 2: Definitive Falsification"
+
+    # Tier 3: Inconclusive / Gray Zone
+    # Positive but below statistical significance
+    assert classify_tier(1.50, 0.25, 50.0) == "Tier 3: Inconclusive"
+    # Statistically significant but below economic edge requirement (0.15 pips)
+    assert classify_tier(2.50, 0.10, 50.0) == "Tier 3: Inconclusive"
+    assert classify_tier(3.00, 0.149, 10.0) == "Tier 3: Inconclusive"
 
 
 def run_vectra_replay(data_path: str, config_path: str, ablation: Optional[str] = None,
@@ -47,11 +84,11 @@ def run_vectra_replay(data_path: str, config_path: str, ablation: Optional[str] 
         "gross_pnl": 0.0,
         "max_drawdown": 0.0,
         "blocks": 0,
-        "block_mean_spread": 0.0,
+        "block_hit_rate": 0.0,
+        "block_mean_gross_mid": 0.0,
+        "gross_t_stat": 0.0,
         "block_mean_net": 0.0,
         "net_t_stat": 0.0,
-        "paired_t_stat": 0.0,
-        "paired_blocks": 0,
         "digest": ""
     }
     
@@ -95,13 +132,11 @@ def run_vectra_replay(data_path: str, config_path: str, ablation: Optional[str] 
                 if len(cols) >= 7:
                     try:
                         res["blocks"] = int(cols[1])
-                        res["block_mean_spread"] = float(cols[3])
-                        res["block_mean_net"] = float(cols[4])
-                        res["net_t_stat"] = float(cols[5])
-                        pm = re.search(r"([+-]?[\d\.]+)\s+\(n=(\d+)\)", cols[6])
-                        if pm:
-                            res["paired_t_stat"] = float(pm.group(1))
-                            res["paired_blocks"] = int(pm.group(2))
+                        res["block_hit_rate"] = float(cols[2].rstrip("%"))
+                        res["block_mean_gross_mid"] = float(cols[3])
+                        res["gross_t_stat"] = float(cols[4]) if cols[4] != "n/a" else 0.0
+                        res["block_mean_net"] = float(cols[5])
+                        res["net_t_stat"] = float(cols[6]) if cols[6] != "n/a" else 0.0
                     except Exception:
                         pass
         report_file.unlink(missing_ok=True)
@@ -133,20 +168,23 @@ def run_full_suite(data_path: str, config_path: str, output_md: str) -> None:
     cfg_json = json.loads(pathlib.Path(config_path).read_text(encoding="utf-8"))
     instrument = cfg_json.get("instrument", "EURUSD")
     pip_size = 0.01 if ("jpy" in instrument.lower() or "usdjpy" in config_path.lower()) else 0.0001
+    quote_currency = "JPY" if "jpy" in instrument.lower() else "USD"
     order_units = cfg_json.get("risk", {}).get("order_units", 10000.0)
 
-    print(f"=== Running Pre-Registered Experiment Suite v1.3 ===")
-    print(f"Data:       {data_path}")
-    print(f"Config:     {config_path} (Instrument: {instrument}, pip_size: {pip_size})")
+    print(f"=== Running Pre-Registered Experiment Suite v1.4 ===")
+    print(f"Data:           {data_path}")
+    print(f"Config:         {config_path} (Instrument: {instrument}, pip_size: {pip_size}, quote: {quote_currency})")
     
     # 1. Primary Hypothesis H1: Full Composite Model at 0.30 pips baseline friction
     print("\n--- [1] Primary Test: Full Model (0.30 pips friction) ---")
     h1_res = run_vectra_replay(data_path, config_path, ablation="none", friction_pips=0.30)
     h1_res["p_value"] = normal_p_value_two_tailed(h1_res["net_t_stat"])
     h1_mean_pips = h1_res["block_mean_net"] / pip_size
-    print(f"Blocks: {h1_res['blocks']}, Net t-stat: {h1_res['net_t_stat']:+.2f}, Mean Net: {h1_mean_pips:.2f} pips, Net P&L: {h1_res['net_pnl']:+.2f} USD")
+    h1_gross_pips = h1_res["block_mean_gross_mid"] / pip_size
+    print(f"Blocks: {h1_res['blocks']}, Net t-stat: {h1_res['net_t_stat']:+.2f}, Gross t-stat: {h1_res['gross_t_stat']:+.2f}, "
+          f"Mean Net: {h1_mean_pips:.2f} pips, Net P&L: {h1_res['net_pnl']:+.2f} {quote_currency}")
 
-    # 2. Leave-One-Out (LOO) Ablations
+    # 2. Leave-One-Out (LOO) Diagnostic Ablations
     print("\n--- [2] Leave-One-Out (LOO) Ablations ---")
     loo_modes = [
         ("loo_no_extension", "LOO 1: Without Volatility Extension"),
@@ -161,9 +199,9 @@ def run_full_suite(data_path: str, config_path: str, output_md: str) -> None:
         r["p_value"] = normal_p_value_two_tailed(r["net_t_stat"])
         r["mean_pips"] = r["block_mean_net"] / pip_size
         loo_results.append(r)
-        print(f"  {desc[:35]}: blocks={r['blocks']}, net_t={r['net_t_stat']:+.2f}, Net P&L={r['net_pnl']:+.2f} USD")
+        print(f"  {desc[:35]}: blocks={r['blocks']}, net_t={r['net_t_stat']:+.2f}, Net P&L={r['net_pnl']:+.2f} {quote_currency}")
 
-    # 3. Single-Feature Isolations
+    # 3. Single-Feature Isolation Rules
     print("\n--- [3] Single-Feature Isolation Rules ---")
     single_modes = [
         ("single_extension", "Single 1: Extension Only (|z| >= 1.8)"),
@@ -178,7 +216,7 @@ def run_full_suite(data_path: str, config_path: str, output_md: str) -> None:
         r["p_value"] = normal_p_value_two_tailed(r["net_t_stat"])
         r["mean_pips"] = r["block_mean_net"] / pip_size
         single_results.append(r)
-        print(f"  {desc[:35]}: blocks={r['blocks']}, net_t={r['net_t_stat']:+.2f}, Net P&L={r['net_pnl']:+.2f} USD")
+        print(f"  {desc[:35]}: blocks={r['blocks']}, net_t={r['net_t_stat']:+.2f}, Net P&L={r['net_pnl']:+.2f} {quote_currency}")
 
     # Apply Holm-Bonferroni across the 8 secondary exploratory tests for this instrument
     secondary_family = loo_results + single_results
@@ -200,7 +238,7 @@ def run_full_suite(data_path: str, config_path: str, output_md: str) -> None:
         r["fixed_net_pnl"] = fixed_net
         r["mean_pips"] = r["block_mean_net"] / pip_size
         friction_results.append(r)
-        print(f"  Friction {f:.1f} pips: Fixed Net={fixed_net:+.2f} USD | Dynamic Net={r['net_pnl']:+.2f} USD (Fills={r['fills']})")
+        print(f"  Friction {f:.1f} pips: Fixed Net={fixed_net:+.2f} {quote_currency} | Dynamic Net={r['net_pnl']:+.2f} {quote_currency} (Fills={r['fills']})")
 
     # Fixed-Execution Break-Even Friction (exact algebraic closed form)
     if cost_per_pip_total > 0:
@@ -208,35 +246,32 @@ def run_full_suite(data_path: str, config_path: str, output_md: str) -> None:
     else:
         fixed_breakeven = 0.0
 
-    # Decision Tier Logic implementing the pre-registered 0.15 pip condition
-    tier = "Tier 3: Inconclusive"
-    if h1_res["net_t_stat"] > 1.96 and h1_mean_pips >= 0.15 and h1_res["net_pnl"] > 0:
-        tier = "Tier 1: Confirmed Edge"
-    elif h1_res["net_t_stat"] <= 0.0 or h1_mean_pips <= 0.0 or h1_res["net_pnl"] <= 0.0:
-        tier = "Tier 2: Definitive Falsification"
+    # Decision Tier Logic
+    tier = classify_tier(h1_res["net_t_stat"], h1_mean_pips, h1_res["net_pnl"])
 
     # Generate Markdown Report
     lines = [
-        "# VECTRA Empirical Experiment Results (Protocol v1.3)",
+        "# VECTRA Empirical Experiment Results (Protocol v1.4)",
         "",
         f"- **Dataset**: `{data_path}`",
-        f"- **Configuration**: `{config_path}` (`{instrument}`, `pip_size = {pip_size}`)",
+        f"- **Configuration**: `{config_path}` (`{instrument}`, `pip_size = {pip_size}`, `quote = {quote_currency}`)",
         f"- **CLI Version**: `v0.1.0`",
         "",
         "## 1. Primary Hypothesis Evaluation (H1)",
         "",
-        "| Hypothesis | Blocks (180s) | Mean Net Return (pips) | Student t-stat (vs 0) | Two-Tailed p-value | Executed Fills | Cumulative Net P&L (USD) | Outcome Tier |",
-        "|---|---:|---:|---:|---:|---:|---:|---|",
+        f"| Hypothesis | Blocks (180s) | Mean Net Return (pips) | Net t-stat (vs 0) | Two-Tailed p-val | Gross t-stat (Mid vs 0) | Executed Fills | Cumulative Net P&L ({quote_currency}) | Outcome Tier |",
+        "|---|---:|---:|---:|---:|---:|---:|---:|---|",
         f"| **H1 (Full Model, 0.30 pips)** | {h1_res['blocks']} | "
         f"{h1_mean_pips:+.2f} | {h1_res['net_t_stat']:+.2f} | "
-        f"{h1_res['p_value']:.4e} | {h1_res['fills']} | "
-        f"{h1_res['net_pnl']:+.2f} | **{tier}** |",
+        f"{h1_res['p_value']:.4e} | {h1_res['gross_t_stat']:+.2f} | "
+        f"{h1_res['fills']} | {h1_res['net_pnl']:+.2f} | **{tier}** |",
         "",
-        f"- **Paired Comparison vs Independent Random Direction Baseline**: t = {h1_res['paired_t_stat']:+.2f} (n = {h1_res['paired_blocks']})",
+        f"- **Primary Edge Metric (Net Return After Friction)**: Mean = {h1_mean_pips:+.2f} pips, t = {h1_res['net_t_stat']:+.2f}",
+        f"- **Gross Directional Skill (Signed Mid Move)**: Mean = {h1_gross_pips:+.2f} pips, t = {h1_res['gross_t_stat']:+.2f}",
         "",
         "## 2. Leave-One-Out (LOO) Diagnostic Ablations",
         "",
-        "| Model Variant | Blocks | Mean Net (pips) | Student t-stat | Raw p-value | Holm Threshold | Holm Significant | Fills | Net P&L (USD) |",
+        f"| Model Variant | Blocks | Mean Net (pips) | Student t-stat | Raw p-value | Holm Threshold | Holm Significant | Fills | Net P&L ({quote_currency}) |",
         "|---|---:|---:|---:|---:|---:|---|---:|---:|",
     ]
     for r in loo_results:
@@ -250,7 +285,7 @@ def run_full_suite(data_path: str, config_path: str, output_md: str) -> None:
         "",
         "## 3. Single-Feature Isolation Rules",
         "",
-        "| Isolated Feature | Blocks | Mean Net (pips) | Student t-stat | Raw p-value | Holm Threshold | Holm Significant | Fills | Net P&L (USD) |",
+        f"| Isolated Feature | Blocks | Mean Net (pips) | Student t-stat | Raw p-value | Holm Threshold | Holm Significant | Fills | Net P&L ({quote_currency}) |",
         "|---|---:|---:|---:|---:|---:|---|---:|---:|",
     ])
     for r in single_results:
@@ -264,7 +299,7 @@ def run_full_suite(data_path: str, config_path: str, output_md: str) -> None:
         "",
         "## 4. Cost Sensitivity Curves (0.1 to 1.0 pips)",
         "",
-        "| Additional Friction | Monotonic Fixed Net P&L (USD) | Dynamic Re-exec Net P&L (USD) | Dynamic Fills | Dynamic Gross P&L (USD) | Block Net Return (pips) | Block Net t-stat |",
+        f"| Additional Friction | Monotonic Fixed Net P&L ({quote_currency}) | Dynamic Re-exec Net P&L ({quote_currency}) | Dynamic Fills | Dynamic Gross P&L ({quote_currency}) | Block Net Return (pips) | Block Net t-stat |",
         "|---|---:|---:|---:|---:|---:|---:|",
     ])
     for r in friction_results:
@@ -288,9 +323,18 @@ def run_full_suite(data_path: str, config_path: str, output_md: str) -> None:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run VECTRA empirical experiment suite.")
-    parser.add_argument("--data", required=True, help="Path to input tick CSV file")
-    parser.add_argument("--config", required=True, help="Path to JSON configuration file")
+    parser.add_argument("--data", help="Path to input tick CSV file")
+    parser.add_argument("--config", help="Path to JSON configuration file")
     parser.add_argument("--output", default="reports/experiment_suite_report.md", help="Path to output markdown report")
+    parser.add_argument("--test", action="store_true", help="Run self-tests and exit")
     args = parser.parse_args()
     
+    if args.test:
+        test_tier_classification()
+        print("All Python decision tier classification unit tests passed successfully!")
+        sys.exit(0)
+
+    if not args.data or not args.config:
+        parser.error("--data and --config are required unless --test is specified.")
+
     run_full_suite(args.data, args.config, args.output)
