@@ -103,6 +103,7 @@ void apply_prediction(const Json& root, backtest::ReplayConfig* replay) {
       p->get_number("continuation_move_scale", c.continuation_move_scale);
   c.reversal_move_scale =
       p->get_number("reversal_move_scale", c.reversal_move_scale);
+  c.ablation_mode = p->get_string("ablation_mode", c.ablation_mode);
 }
 
 void apply_risk(const Json& root, backtest::ReplayConfig* replay) {

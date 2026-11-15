@@ -79,13 +79,29 @@ Prediction ScoringPredictor::predict(const behavior::BehaviorFeatures& f) const 
   p.valid = true;
 
   // ---- Exhaustion hypothesis score ---------------------------------------
+  behavior::ExhaustionConfig ex_cfg = config_.exhaustion;
+  double min_ext_z = config_.min_extension_z;
+  double min_cont_eff = config_.min_continuation_efficiency;
+  const std::string& mode = config_.ablation_mode;
+
+  if (mode == "loo_no_extension") {
+    ex_cfg.weight_extension = 0.0;
+    min_ext_z = 0.0;
+  } else if (mode == "loo_no_deceleration") {
+    ex_cfg.weight_deceleration = 0.0;
+  } else if (mode == "loo_no_fade") {
+    ex_cfg.weight_response_fade = 0.0;
+  } else if (mode == "loo_no_efficiency") {
+    min_cont_eff = 0.0;
+  }
+
   const behavior::ExhaustionResult exhaustion =
-      behavior::compute_exhaustion(f, config_.exhaustion);
+      behavior::compute_exhaustion(f, ex_cfg);
   p.exhaustion = exhaustion.score;
 
   const double abs_z = std::fabs(f.z_short);
   const double extension_gate =
-      config_.min_extension_z > 0.0 ? clampd(abs_z / config_.min_extension_z, 0.0, 1.0) : 1.0;
+      min_ext_z > 0.0 ? clampd(abs_z / min_ext_z, 0.0, 1.0) : 1.0;
 
   // ---- Transparent scores -------------------------------------------------
   const double persistence_positive = clampd(f.persistence, 0.0, 1.0);
@@ -117,26 +133,61 @@ Prediction ScoringPredictor::predict(const behavior::BehaviorFeatures& f) const 
   const double direction_sign = disp > 0.0 ? 1.0 : (disp < 0.0 ? -1.0 : 0.0);
 
   bool rule_fired = false;
-  if (direction_sign != 0.0 && abs_z >= config_.min_extension_z) {
-    if (exhaustion.score >= config_.reversal_exhaustion_threshold &&
-        f.persistence <= config_.max_persistence_for_reversal &&
-        f.regime_efficiency <= config_.max_reversal_efficiency) {
+  if (mode == "single_extension") {
+    if (direction_sign != 0.0 && abs_z >= config_.min_extension_z) {
       p.kind = SignalKind::Reversal;
       p.direction = -direction_sign;
+      p.reversal_score = clampd(abs_z / config_.exhaustion.z_normalization, 0.1, 1.0);
+      p.confidence = 1.0;
       rule_fired = true;
-    } else if (exhaustion.score <= config_.continuation_exhaustion_threshold &&
-               f.persistence >= config_.min_persistence &&
-               (config_.max_continuation_extension_z <= 0.0 ||
-                abs_z <= config_.max_continuation_extension_z) &&
-               f.regime_efficiency >= config_.min_continuation_efficiency &&
-               (!config_.require_mid_confirmation ||
-                (f.disp_short * (f.disp_mid - f.disp_short) > 0.0)) &&
-               (!config_.require_long_confirmation ||
-                (f.disp_short * f.disp_long > 0.0 &&
-                 f.disp_short * (f.disp_long - f.disp_mid) > 0.0))) {
+    }
+  } else if (mode == "single_deceleration") {
+    if (direction_sign != 0.0 && f.deceleration >= 0.50) {
+      p.kind = SignalKind::Reversal;
+      p.direction = -direction_sign;
+      p.reversal_score = clampd(f.deceleration, 0.1, 1.0);
+      p.confidence = 1.0;
+      rule_fired = true;
+    }
+  } else if (mode == "single_fade") {
+    if (direction_sign != 0.0 && f.response_fade >= 0.50) {
+      p.kind = SignalKind::Reversal;
+      p.direction = -direction_sign;
+      p.reversal_score = clampd(f.response_fade, 0.1, 1.0);
+      p.confidence = 1.0;
+      rule_fired = true;
+    }
+  } else if (mode == "single_efficiency") {
+    if (direction_sign != 0.0 && f.regime_efficiency >= 0.60) {
       p.kind = SignalKind::Continuation;
       p.direction = direction_sign;
+      p.continuation_score = clampd(f.regime_efficiency, 0.1, 1.0);
+      p.confidence = 1.0;
       rule_fired = true;
+    }
+  } else {
+    // Normal composite or LOO model:
+    if (direction_sign != 0.0 && abs_z >= min_ext_z) {
+      if (exhaustion.score >= config_.reversal_exhaustion_threshold &&
+          f.persistence <= config_.max_persistence_for_reversal &&
+          f.regime_efficiency <= config_.max_reversal_efficiency) {
+        p.kind = SignalKind::Reversal;
+        p.direction = -direction_sign;
+        rule_fired = true;
+      } else if (exhaustion.score <= config_.continuation_exhaustion_threshold &&
+                 f.persistence >= config_.min_persistence &&
+                 (config_.max_continuation_extension_z <= 0.0 ||
+                  abs_z <= config_.max_continuation_extension_z) &&
+                 f.regime_efficiency >= min_cont_eff &&
+                 (!config_.require_mid_confirmation ||
+                  (f.disp_short * (f.disp_mid - f.disp_short) > 0.0)) &&
+                 (!config_.require_long_confirmation ||
+                  (f.disp_short * f.disp_long > 0.0 &&
+                   f.disp_short * (f.disp_long - f.disp_mid) > 0.0))) {
+        p.kind = SignalKind::Continuation;
+        p.direction = direction_sign;
+        rule_fired = true;
+      }
     }
   }
 

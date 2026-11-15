@@ -71,12 +71,22 @@ struct SignalHorizonStats {
   std::size_t flats = 0;
   double sum_signed_mid_move = 0.0;
   double sum_net_spread_move = 0.0;
+  double sum_net_friction_move = 0.0;
 
   // Autocorrelation-robust statistics over strictly non-overlapping horizon blocks.
   std::size_t non_overlapping = 0;
   std::size_t non_overlapping_hits = 0;
+  std::size_t non_overlapping_net_hits = 0;
   double non_overlapping_mean_spread = 0.0;
   double non_overlapping_m2_spread = 0.0;
+  double non_overlapping_mean_net = 0.0;
+  double non_overlapping_m2_net = 0.0;
+
+  // Paired comparison vs Naive Directional Baseline on matched non-overlapping blocks
+  std::size_t paired_blocks = 0;
+  std::size_t paired_wins = 0;
+  double paired_diff_mean = 0.0;
+  double paired_diff_m2 = 0.0;
 
   double hit_rate() const {
     return evaluated > 0 ? static_cast<double>(hits) / static_cast<double>(evaluated) : 0.0;
@@ -87,9 +97,17 @@ struct SignalHorizonStats {
   double mean_net_spread_move() const {
     return evaluated > 0 ? sum_net_spread_move / static_cast<double>(evaluated) : 0.0;
   }
+  double mean_net_friction_move() const {
+    return evaluated > 0 ? sum_net_friction_move / static_cast<double>(evaluated) : 0.0;
+  }
   double non_overlapping_hit_rate() const {
     return non_overlapping > 0
                ? static_cast<double>(non_overlapping_hits) / static_cast<double>(non_overlapping)
+               : 0.0;
+  }
+  double non_overlapping_net_hit_rate() const {
+    return non_overlapping > 0
+               ? static_cast<double>(non_overlapping_net_hits) / static_cast<double>(non_overlapping)
                : 0.0;
   }
   double non_overlapping_std_spread() const {
@@ -104,6 +122,31 @@ struct SignalHorizonStats {
     }
     return non_overlapping_mean_spread /
            (s / std::sqrt(static_cast<double>(non_overlapping)));
+  }
+  double non_overlapping_std_net() const {
+    return non_overlapping > 1
+               ? std::sqrt(non_overlapping_m2_net / static_cast<double>(non_overlapping - 1))
+               : 0.0;
+  }
+  double non_overlapping_net_t_stat() const {
+    const double s = non_overlapping_std_net();
+    if (non_overlapping < 2 || s <= 0.0) {
+      return 0.0;
+    }
+    return non_overlapping_mean_net /
+           (s / std::sqrt(static_cast<double>(non_overlapping)));
+  }
+  double paired_std_diff() const {
+    return paired_blocks > 1
+               ? std::sqrt(paired_diff_m2 / static_cast<double>(paired_blocks - 1))
+               : 0.0;
+  }
+  double paired_t_stat() const {
+    const double s = paired_std_diff();
+    if (paired_blocks < 2 || s <= 0.0) {
+      return 0.0;
+    }
+    return paired_diff_mean / (s / std::sqrt(static_cast<double>(paired_blocks)));
   }
 };
 
@@ -260,6 +303,7 @@ class ReplayEngine {
     bool non_overlapping_all = false;
     bool non_overlapping_kind = false;
     double score = 0.0;
+    double baseline_direction = 0.0;
   };
 
   void handle_order_events(std::int64_t now_ns, market::Price bid, market::Price ask);

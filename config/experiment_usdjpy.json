@@ -1,5 +1,5 @@
 {
-  "_comment": "VECTRA Experiment v1.1 Pre-Registered Config - USDJPY (pip_size = 0.01, scaled 100x from EURUSD price parameters). Locked prior to data download.",
+  "_comment": "VECTRA Experiment v1.2 Pre-Registered Config - USDJPY (pip_size = 0.01, absolute price parameters scaled 100x, dimensionless ratios unscaled). Locked prior to data download.",
   "instrument": "USDJPY",
   "validation": {
     "max_spread": 0.03,
@@ -21,7 +21,7 @@
     "persistence_window_events": 80,
     "min_vol_samples": 300,
     "min_volatility": 1e-08,
-    "spread_warn_ratio": 0.025
+    "spread_warn_ratio": 0.00025
   },
   "exhaustion": {
     "weight_extension": 0.3,
@@ -29,7 +29,7 @@
     "weight_response_fade": 0.35,
     "weight_quality": 0.1,
     "z_normalization": 3.5,
-    "spread_reference_ratio": 0.02
+    "spread_reference_ratio": 0.0002
   },
   "prediction": {
     "horizon_events": 600,
@@ -47,14 +47,15 @@
     "max_reversal_efficiency": 1.0,
     "max_continuation_extension_z": 0.0,
     "continuation_move_scale": 1.0,
-    "reversal_move_scale": 0.45
+    "reversal_move_scale": 0.45,
+    "ablation_mode": "none"
   },
   "risk": {
     "enabled": true,
     "kill_switch": false,
     "min_expected_edge": 0.01,
     "commission": 0.0005,
-    "slippage": 0.0005,
+    "slippage": 0.001,
     "max_spread": 0.025,
     "round_trip_cost": true,
     "order_units": 10000.0,
@@ -76,7 +77,7 @@
     "reject_probability": 0.0,
     "partial_fill_probability": 0.0,
     "partial_fill_fraction": 0.5,
-    "slippage": 0.0005,
+    "slippage": 0.001,
     "commission_per_unit": 0.0005,
     "seed": 42
   },

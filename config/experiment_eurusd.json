@@ -1,5 +1,5 @@
 {
-  "_comment": "VECTRA Experiment v1.1 Pre-Registered Config - EURUSD (pip_size = 0.0001). Locked prior to data download.",
+  "_comment": "VECTRA Experiment v1.2 Pre-Registered Config - EURUSD (pip_size = 0.0001, baseline round-trip friction = 0.30 pips: commission = 0.05 pips/leg, slippage = 0.10 pips/leg). Locked prior to data download.",
   "instrument": "EURUSD",
   "validation": {
     "max_spread": 0.0003,
@@ -47,14 +47,15 @@
     "max_reversal_efficiency": 1.0,
     "max_continuation_extension_z": 0.0,
     "continuation_move_scale": 1.0,
-    "reversal_move_scale": 0.45
+    "reversal_move_scale": 0.45,
+    "ablation_mode": "none"
   },
   "risk": {
     "enabled": true,
     "kill_switch": false,
     "min_expected_edge": 0.0001,
     "commission": 5e-06,
-    "slippage": 5e-06,
+    "slippage": 1e-05,
     "max_spread": 0.00025,
     "round_trip_cost": true,
     "order_units": 10000.0,
@@ -76,7 +77,7 @@
     "reject_probability": 0.0,
     "partial_fill_probability": 0.0,
     "partial_fill_fraction": 0.5,
-    "slippage": 5e-06,
+    "slippage": 1e-05,
     "commission_per_unit": 5e-06,
     "seed": 42
   },

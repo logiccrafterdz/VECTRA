@@ -232,25 +232,38 @@ void ReplayEngine::update_equity(market::Price bid, market::Price ask,
 void ReplayEngine::evaluate_matured_signals(std::uint64_t current_event_index,
                                             std::int64_t current_time_ns, double mid,
                                             double bid, double ask) {
-  const auto accumulate = [](SignalHorizonStats& s, double signed_mid, double net_spread,
-                             bool is_non_overlapping) {
+  const double round_trip_friction =
+      2.0 * (config_.risk.commission + config_.risk.slippage);
+
+  const auto accumulate = [round_trip_friction](SignalHorizonStats& s, double signed_mid,
+                                                double net_spread, bool is_non_overlapping) {
     ++s.evaluated;
     if (signed_mid > 0.0) {
       ++s.hits;
     } else if (signed_mid == 0.0) {
       ++s.flats;
     }
+    const double net_friction = net_spread - round_trip_friction;
     s.sum_signed_mid_move += signed_mid;
     s.sum_net_spread_move += net_spread;
+    s.sum_net_friction_move += net_friction;
     if (is_non_overlapping) {
       ++s.non_overlapping;
       if (signed_mid > 0.0) {
         ++s.non_overlapping_hits;
       }
+      if (net_friction > 0.0) {
+        ++s.non_overlapping_net_hits;
+      }
       const double delta = net_spread - s.non_overlapping_mean_spread;
       s.non_overlapping_mean_spread += delta / static_cast<double>(s.non_overlapping);
       const double delta2 = net_spread - s.non_overlapping_mean_spread;
       s.non_overlapping_m2_spread += delta * delta2;
+
+      const double delta_net = net_friction - s.non_overlapping_mean_net;
+      s.non_overlapping_mean_net += delta_net / static_cast<double>(s.non_overlapping);
+      const double delta2_net = net_friction - s.non_overlapping_mean_net;
+      s.non_overlapping_m2_net += delta_net * delta2_net;
     }
   };
 
@@ -265,6 +278,7 @@ void ReplayEngine::evaluate_matured_signals(std::uint64_t current_event_index,
     const double signed_mid = item.direction * (mid - item.entry_mid);
     const double net_spread =
         item.direction >= 0.0 ? (bid - item.entry_ask) : (item.entry_bid - ask);
+    const double net_friction = net_spread - round_trip_friction;
 
     if (item.is_baseline) {
       accumulate(stats_.forward_baseline, signed_mid, net_spread, item.non_overlapping_kind);
@@ -275,6 +289,24 @@ void ReplayEngine::evaluate_matured_signals(std::uint64_t current_event_index,
                    item.non_overlapping_kind);
       } else if (item.kind == prediction::SignalKind::Reversal) {
         accumulate(stats_.forward_reversal, signed_mid, net_spread, item.non_overlapping_kind);
+      }
+
+      // Paired comparison vs Naive Directional Baseline on identical non-overlapping blocks
+      if (item.non_overlapping_all && item.baseline_direction != 0.0) {
+        const double base_net_spread = item.baseline_direction >= 0.0
+                                           ? (bid - item.entry_ask)
+                                           : (item.entry_bid - ask);
+        const double base_net_friction = base_net_spread - round_trip_friction;
+        const double diff = net_friction - base_net_friction;
+        auto& s = stats_.forward_all;
+        ++s.paired_blocks;
+        if (diff > 0.0) {
+          ++s.paired_wins;
+        }
+        const double delta = diff - s.paired_diff_mean;
+        s.paired_diff_mean += delta / static_cast<double>(s.paired_blocks);
+        const double delta2 = diff - s.paired_diff_mean;
+        s.paired_diff_m2 += delta * delta2;
       }
 
       const double clamped_score = std::clamp(item.score, 0.0, 1.0);
@@ -520,6 +552,7 @@ ReplayStats ReplayEngine::run(std::istream& input, const std::string& source_nam
               no_all,
               no_kind,
               active_score,
+              features.disp_short > 0.0 ? 1.0 : (features.disp_short < 0.0 ? -1.0 : 0.0),
           });
         }
 

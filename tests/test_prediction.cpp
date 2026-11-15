@@ -213,3 +213,46 @@ VT_TEST(Prediction, MoveScalesAdjustExpectedMoveBySignalKind) {
   VT_ASSERT_EQ(p2.kind, SignalKind::Continuation);
   VT_ASSERT_NEAR(p2.expected_move_log, 2.0 * p1.expected_move_log, 1e-12);
 }
+
+VT_TEST(Prediction, SingleFeatureAblationsFireAppropriateSignals) {
+  BehaviorFeatures f = base_features();
+
+  // 1. Single Extension
+  PredictionConfig ext_cfg;
+  ext_cfg.ablation_mode = "single_extension";
+  ext_cfg.min_extension_z = 1.8;
+  ScoringPredictor ext_pred{ext_cfg};
+  f.z_short = 2.5;
+  Prediction p_ext = ext_pred.predict(f);
+  VT_ASSERT_TRUE(p_ext.has_signal());
+  VT_ASSERT_EQ(p_ext.kind, SignalKind::Reversal);
+  VT_ASSERT_TRUE(p_ext.direction < 0.0);
+
+  // 2. Single Deceleration
+  PredictionConfig dec_cfg;
+  dec_cfg.ablation_mode = "single_deceleration";
+  ScoringPredictor dec_pred{dec_cfg};
+  f.z_short = 0.5; // low z, would fail normal rule
+  f.deceleration = 0.8;
+  Prediction p_dec = dec_pred.predict(f);
+  VT_ASSERT_TRUE(p_dec.has_signal());
+  VT_ASSERT_EQ(p_dec.kind, SignalKind::Reversal);
+
+  // 3. Single Fade
+  PredictionConfig fade_cfg;
+  fade_cfg.ablation_mode = "single_fade";
+  ScoringPredictor fade_pred{fade_cfg};
+  f.response_fade = 0.75;
+  Prediction p_fade = fade_pred.predict(f);
+  VT_ASSERT_TRUE(p_fade.has_signal());
+  VT_ASSERT_EQ(p_fade.kind, SignalKind::Reversal);
+
+  // 4. Single Efficiency
+  PredictionConfig eff_cfg;
+  eff_cfg.ablation_mode = "single_efficiency";
+  ScoringPredictor eff_pred{eff_cfg};
+  f.regime_efficiency = 0.70;
+  Prediction p_eff = eff_pred.predict(f);
+  VT_ASSERT_TRUE(p_eff.has_signal());
+  VT_ASSERT_EQ(p_eff.kind, SignalKind::Continuation);
+}

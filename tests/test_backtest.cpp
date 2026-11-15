@@ -356,3 +356,21 @@ VT_TEST(Replay, StopLossAndTakeProfitExitsAreTriggered) {
   const ReplayStats sl_stats = sl_engine.run(sl_in, "sl");
   VT_ASSERT_TRUE(sl_stats.stop_loss_exits_submitted > 0);
 }
+
+VT_TEST(Replay, NonOverlappingBlocksComputeNetAndPairedStats) {
+  ReplayConfig cfg = test_config();
+  cfg.eval_horizon_ns = 50000000; // 50ms horizon
+  cfg.prediction.horizon_events = 5;
+  ReplayEngine engine(cfg);
+  std::istringstream in(to_csv(trending_walk(200)));
+  const ReplayStats stats = engine.run(in, "fwd-blocks");
+
+  VT_ASSERT_TRUE(stats.forward_all.evaluated > 0);
+  VT_ASSERT_TRUE(stats.forward_all.non_overlapping > 0);
+  VT_ASSERT_TRUE(stats.forward_all.non_overlapping_mean_spread != 0.0);
+  // Net return deducting friction must be computed
+  VT_ASSERT_TRUE(stats.forward_all.non_overlapping_mean_net <=
+                 stats.forward_all.non_overlapping_mean_spread);
+  // Paired blocks against naive baseline must be recorded
+  VT_ASSERT_TRUE(stats.forward_all.paired_blocks > 0);
+}

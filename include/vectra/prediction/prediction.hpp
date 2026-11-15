@@ -57,6 +57,7 @@ struct PredictionConfig {
   double max_continuation_extension_z = 0.0;
   double continuation_move_scale = 1.0;
   double reversal_move_scale = 1.0;
+  std::string ablation_mode = "none";
 
   behavior::ExhaustionConfig exhaustion;
 };

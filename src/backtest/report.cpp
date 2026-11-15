@@ -147,26 +147,32 @@ void write_markdown_report(std::ostream& out, const ReplayEngine& engine,
     write_fwd_row("Naive directional baseline", s.forward_baseline);
     out << "\n";
     out << "#### Autocorrelation-robust non-overlapping horizon blocks\n\n";
-    out << "| Signal kind | Independent blocks | Block hit rate (mid) | Block mean spread-crossed move | Student t-stat |\n"
-           "|---|---|---|---|---|\n";
-    const auto write_block_row = [&out](const char* label, const SignalHorizonStats& fs) {
+    out << "| Signal kind | Independent blocks | Block hit rate (mid) | Block mean spread move | Block mean net return | Net t-stat (vs 0) | Paired t vs baseline |\n"
+           "|---|---|---|---|---|---|---|\n";
+    const auto write_block_row = [&out](const char* label, const SignalHorizonStats& fs, bool has_paired) {
       out << "| " << label << " | " << fs.non_overlapping << " | ";
       if (fs.non_overlapping == 0) {
-        out << "n/a | n/a | n/a |\n";
+        out << "n/a | n/a | n/a | n/a | n/a |\n";
         return;
       }
       out << percent(100.0 * fs.non_overlapping_hit_rate()) << " | "
-          << number(fs.non_overlapping_mean_spread, 6) << " | ";
+          << number(fs.non_overlapping_mean_spread, 6) << " | "
+          << number(fs.non_overlapping_mean_net, 6) << " | ";
       if (fs.non_overlapping < 2) {
-        out << "n/a |\n";
+        out << "n/a | ";
       } else {
-        out << number(fs.non_overlapping_t_stat(), 2) << " |\n";
+        out << number(fs.non_overlapping_net_t_stat(), 2) << " | ";
+      }
+      if (has_paired && fs.paired_blocks >= 2) {
+        out << number(fs.paired_t_stat(), 2) << " (n=" << fs.paired_blocks << ") |\n";
+      } else {
+        out << "n/a |\n";
       }
     };
-    write_block_row("Continuation", s.forward_continuation);
-    write_block_row("Reversal", s.forward_reversal);
-    write_block_row("All usable signals", s.forward_all);
-    write_block_row("Naive directional baseline", s.forward_baseline);
+    write_block_row("Continuation", s.forward_continuation, false);
+    write_block_row("Reversal", s.forward_reversal, false);
+    write_block_row("All usable signals", s.forward_all, true);
+    write_block_row("Naive directional baseline", s.forward_baseline, false);
     out << "\n";
 
     if (s.calibration_total.count > 0) {

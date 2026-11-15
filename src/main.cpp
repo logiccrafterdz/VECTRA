@@ -36,6 +36,8 @@ struct Options {
   std::string data_path;
   std::string config_path;
   std::string report_path;
+  std::string ablation;
+  double friction_pips = -1.0;
   bool stream = false;
   bool quiet = false;
 };
@@ -73,6 +75,14 @@ bool parse_args(int argc, char** argv, Options& options, bool& show_help) {
       const char* value = require_value("--report");
       if (value == nullptr) return false;
       options.report_path = value;
+    } else if (arg == "--ablation") {
+      const char* value = require_value("--ablation");
+      if (value == nullptr) return false;
+      options.ablation = value;
+    } else if (arg == "--friction") {
+      const char* value = require_value("--friction");
+      if (value == nullptr) return false;
+      options.friction_pips = std::strtod(value, nullptr);
     } else {
       std::fprintf(stderr, "error: unknown argument: %s\n", arg.c_str());
       return false;
@@ -121,6 +131,20 @@ int main(int argc, char** argv) {
 
   if (options.stream) {
     settings.replay.stream_decisions = true;
+  }
+
+  if (!options.ablation.empty()) {
+    settings.replay.prediction.ablation_mode = options.ablation;
+  }
+
+  if (options.friction_pips >= 0.0) {
+    const double pip_size = (settings.replay.instrument == "USDJPY") ? 0.01 : 0.0001;
+    const double comm = 0.05 * pip_size;
+    const double slip = std::max(0.0, (options.friction_pips - 0.10) / 2.0) * pip_size;
+    settings.replay.risk.commission = comm;
+    settings.replay.risk.slippage = slip;
+    settings.replay.broker.commission_per_unit = comm;
+    settings.replay.broker.slippage = slip;
   }
 
   // --- input & replay ------------------------------------------------------
