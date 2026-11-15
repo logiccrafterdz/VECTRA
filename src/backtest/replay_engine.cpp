@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdio>
 #include <cstring>
 #include <utility>
 
@@ -127,6 +128,16 @@ void ReplayEngine::apply_local_fill(const execution::OrderEvent& event,
 
   commission_paid_ += commission;
   slippage_paid_ += slippage;
+
+  if (config_.stream_decisions) {
+    std::printf(
+        "{\"event\":\"FILL\",\"time_ns\":%lld,\"order_id\":\"%s\",\"side\":\"%s\","
+        "\"units\":%.2f,\"price\":%.5f,\"position\":%.2f,\"realized_pnl\":%.2f}\n",
+        static_cast<long long>(event.time_ns), event.order_id.c_str(),
+        execution::to_string(event.side), event.units, event.price,
+        local_account_.position, local_account_.realized_pnl);
+    std::fflush(stdout);
+  }
 }
 
 void ReplayEngine::handle_order_events(std::int64_t now_ns, market::Price bid,
@@ -265,6 +276,23 @@ void ReplayEngine::evaluate_matured_signals(std::uint64_t current_event_index,
       } else if (item.kind == prediction::SignalKind::Reversal) {
         accumulate(stats_.forward_reversal, signed_mid, net_spread, item.non_overlapping_kind);
       }
+
+      const double clamped_score = std::clamp(item.score, 0.0, 1.0);
+      const double hit_indicator = signed_mid > 0.0 ? 1.0 : 0.0;
+      const double brier = (clamped_score - hit_indicator) * (clamped_score - hit_indicator);
+      const auto update_cal = [&](CalibrationBin& b) {
+        ++b.count;
+        if (signed_mid > 0.0) {
+          ++b.hits;
+        }
+        b.sum_score += clamped_score;
+        b.sum_brier += brier;
+        b.sum_net_spread_move += net_spread;
+      };
+      update_cal(stats_.calibration_total);
+      const std::size_t bin_idx =
+          std::min<std::size_t>(4, static_cast<std::size_t>(clamped_score * 5.0));
+      update_cal(stats_.calibration_bins[bin_idx]);
     }
   }
 }
@@ -476,6 +504,10 @@ ReplayStats ReplayEngine::run(std::istream& input, const std::string& source_nam
               next_non_overlap_time_rev_ = target_ns;
             }
           }
+          const double active_score =
+              prediction.kind == prediction::SignalKind::Reversal
+                  ? prediction.reversal_score
+                  : prediction.continuation_score;
           pending_signal_evals_.push_back(PendingSignalEval{
               target_ev,
               target_ns,
@@ -487,6 +519,7 @@ ReplayStats ReplayEngine::run(std::istream& input, const std::string& source_nam
               false,
               no_all,
               no_kind,
+              active_score,
           });
         }
 
@@ -518,6 +551,15 @@ ReplayStats ReplayEngine::run(std::istream& input, const std::string& source_nam
 
         if (decision.allowed()) {
           ++stats_.decisions_allowed;
+          if (config_.stream_decisions) {
+            std::printf(
+                "{\"event\":\"DECISION\",\"time_ns\":%lld,\"signal\":\"%s\","
+                "\"direction\":%.0f,\"edge\":%.6f,\"cost\":%.6f,\"units\":%.2f}\n",
+                static_cast<long long>(event.source_time_ns),
+                prediction::to_string(decision.signal), prediction.direction,
+                decision.edge, decision.cost, decision.size_units);
+            std::fflush(stdout);
+          }
         } else {
           ++stats_.decisions_rejected;
           ++stats_.decision_reasons[risk::to_string(decision.reason)];

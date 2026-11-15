@@ -45,6 +45,17 @@ Source: `examples\real_eurusd_oos.csv`
 | All usable signals | 33 | 51.515% | -0.000026 | -0.37 |
 | Naive directional baseline | 66 | 54.545% | 0.000021 | 0.49 |
 
+#### Score reliability & Brier calibration (usable signals)
+
+| Score bin | Evaluated | Mean score | Realized hit rate (mid) | Mean spread-crossed move | Brier score |
+|---|---|---|---|---|---|
+| [0.0, 0.2) | 1007 | 0.1220 | 30.089% | -0.000197 | 0.2462 |
+| [0.2, 0.4) | 203 | 0.2625 | 38.424% | -0.000229 | 0.2565 |
+| [0.4, 0.6) | 320 | 0.5638 | 46.250% | -0.000012 | 0.2536 |
+| [0.6, 0.8) | 2085 | 0.6861 | 64.604% | 0.000086 | 0.2279 |
+| [0.8, 1.0] | 32 | 0.8264 | 90.625% | 0.000285 | 0.0877 |
+| Total | 3647 | 0.4972 | 52.235% | -0.000017 | 0.2356 |
+
 Scores are continuity/reversal **scores** in [0,1], produced by a fixed formula with uncalibrated thresholds (see docs/mathematical_model.md). They have not been calibrated against realized outcomes and must not be read as probabilities.
 
 ## 3. Decisions and risk
@@ -97,8 +108,8 @@ These results come from a synthetic replay. They are a **pipeline smoke test**, 
 
 | Stage | Median | p95 | p99 | Samples |
 |---|---|---|---|---|
-| Event processing | 0.8 | 1.1 | 1.5 | 90477 |
-| Signal calculation | 0.9 | 1.2 | 1.4 | 90477 |
+| Event processing | 0.8 | 1.3 | 1.7 | 90477 |
+| Signal calculation | 0.9 | 1.3 | 1.6 | 90477 |
 | Decision | 0.2 | 0.3 | 1.4 | 90477 |
 | Simulated order (submit to ack, venue clock) | 57000.0 | 1293000.0 | 1768000.0 | 61 |
 

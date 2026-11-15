@@ -45,6 +45,17 @@ Source: `examples\real_eurusd_ticks.csv`
 | All usable signals | 51 | 50.980% | 0.000125 | 1.46 |
 | Naive directional baseline | 124 | 37.097% | -0.000081 | -1.91 |
 
+#### Score reliability & Brier calibration (usable signals)
+
+| Score bin | Evaluated | Mean score | Realized hit rate (mid) | Mean spread-crossed move | Brier score |
+|---|---|---|---|---|---|
+| [0.0, 0.2) | 1915 | 0.1275 | 51.854% | 0.000529 | 0.3999 |
+| [0.2, 0.4) | 672 | 0.2590 | 58.631% | 0.000755 | 0.3620 |
+| [0.4, 0.6) | 290 | 0.5470 | 57.586% | -0.000292 | 0.2641 |
+| [0.6, 0.8) | 2979 | 0.6966 | 42.531% | -0.000162 | 0.3250 |
+| [0.8, 1.0] | 559 | 0.8479 | 8.945% | -0.000361 | 0.6605 |
+| Total | 6415 | 0.4873 | 44.754% | 0.000117 | 0.3777 |
+
 Scores are continuity/reversal **scores** in [0,1], produced by a fixed formula with uncalibrated thresholds (see docs/mathematical_model.md). They have not been calibrated against realized outcomes and must not be read as probabilities.
 
 ## 3. Decisions and risk
@@ -98,9 +109,9 @@ These results come from a synthetic replay. They are a **pipeline smoke test**, 
 
 | Stage | Median | p95 | p99 | Samples |
 |---|---|---|---|---|
-| Event processing | 0.8 | 1.2 | 1.6 | 96419 |
-| Signal calculation | 0.9 | 1.3 | 1.6 | 96419 |
-| Decision | 0.2 | 0.3 | 1.4 | 96419 |
+| Event processing | 0.8 | 1.3 | 1.8 | 96419 |
+| Signal calculation | 0.9 | 1.4 | 1.6 | 96419 |
+| Decision | 0.2 | 0.3 | 1.5 | 96419 |
 | Simulated order (submit to ack, venue clock) | 65000.0 | 1665000.0 | 2540000.0 | 88 |
 
 The first three rows are local processing durations measured with std::chrono::steady_clock. The simulated-order row is measured on the venue's simulated clock (submit to acknowledgement) and, being driven by market-event timestamps, is quantized by the tick interval. Provider timestamps are never subtracted from local timestamps: no clock synchronization model exists in v0.1.

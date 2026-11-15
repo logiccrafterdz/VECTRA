@@ -168,6 +168,29 @@ void write_markdown_report(std::ostream& out, const ReplayEngine& engine,
     write_block_row("All usable signals", s.forward_all);
     write_block_row("Naive directional baseline", s.forward_baseline);
     out << "\n";
+
+    if (s.calibration_total.count > 0) {
+      out << "#### Score reliability & Brier calibration (usable signals)\n\n";
+      out << "| Score bin | Evaluated | Mean score | Realized hit rate (mid) | Mean spread-crossed move | Brier score |\n"
+             "|---|---|---|---|---|---|\n";
+      static constexpr const char* kBinLabels[5] = {
+          "[0.0, 0.2)", "[0.2, 0.4)", "[0.4, 0.6)", "[0.6, 0.8)", "[0.8, 1.0]"};
+      const auto write_cal_row = [&out](const char* label, const CalibrationBin& b) {
+        if (b.count == 0) {
+          return;
+        }
+        out << "| " << label << " | " << b.count << " | "
+            << number(b.mean_score(), 4) << " | "
+            << percent(100.0 * b.hit_rate()) << " | "
+            << number(b.mean_net_spread_move(), 6) << " | "
+            << number(b.brier_score(), 4) << " |\n";
+      };
+      for (std::size_t i = 0; i < 5; ++i) {
+        write_cal_row(kBinLabels[i], s.calibration_bins[i]);
+      }
+      write_cal_row("Total", s.calibration_total);
+      out << "\n";
+    }
   }
   out << "Scores are continuity/reversal **scores** in [0,1], produced by a "
          "fixed formula with uncalibrated thresholds (see "

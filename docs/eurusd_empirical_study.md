@@ -1,57 +1,55 @@
-# Empirical Study: Real EUR/USD Tick Stream (300,000 Ticks, 3-Way Chronological Split)
+# Empirical Study: Real EUR/USD Tick Stream (461,357 Ticks, 4-Way Chronological Split)
 
 ## 1. Overview and Epistemic Discipline
 
-Following the pre-registered validation protocol in `docs/testing_plan.md` §6 and `docs/real_data_ingestion_plan.md`, VECTRA was connected to a historical institutional FXCM EUR/USD quote stream (`scripts/fetch_real_eurusd.py`) and evaluated across **300,000 consecutive ticks (~13 hours of continuous market activity)** divided chronologically into three strictly non-overlapping sets of 100,000 ticks each:
+Following the pre-registered validation protocol in `docs/testing_plan.md` §6 and `docs/real_data_ingestion_plan.md`, VECTRA was connected to a historical institutional FXCM EUR/USD quote stream (`scripts/fetch_real_eurusd.py`) and evaluated across the full **461,357 consecutive ticks (~20.98 hours of continuous market activity)** divided chronologically into four strictly non-overlapping sets:
 
-1. **Development (`DEV` — `examples/real_eurusd_dev.csv`)**: Ticks 1–100,000 (`6.48 hours`, Asian to early London session, ~4.1 valid ticks/s).
-2. **Validation (`VAL` — `examples/real_eurusd_val.csv`)**: Ticks 100,001–200,000 (`2.95 hours`, London peak session, ~8.4 valid ticks/s).
-3. **Out-of-Sample (`OOS` — `examples/real_eurusd_oos.csv`)**: Ticks 200,001–300,000 (`3.55 hours`, London/New York overlap, ~7.1 valid ticks/s).
+1. **Development (`DEV` — `examples/real_eurusd_dev.csv`)**: Ticks 1–100,000 (`6.48 hours`, Asian to early London session).
+2. **Validation (`VAL` — `examples/real_eurusd_val.csv`)**: Ticks 100,001–200,000 (`2.95 hours`, London peak session).
+3. **Out-of-Sample 1 (`OOS` — `examples/real_eurusd_oos.csv`)**: Ticks 200,001–300,000 (`3.55 hours`, London/New York overlap).
+4. **Out-of-Sample 2 (`OOS2` — `examples/real_eurusd_oos2.csv`)**: Ticks 300,001–461,357 (`8.00 hours`, blind holdout US / Late NY session).
 
 ---
 
-## 2. Structural & Mathematical Engine Upgrades
-
-Initial smoke testing with the synthetic-calibrated `config/default.json` on real EUR/USD quotes produced `-94.95` Net P&L over 408 fills, exposing five structural bottlenecks that were resolved in the C++20 core:
+## 2. Structural, Statistical & CLI Upgrades
 
 1. **Round-Trip Cost Accounting & Order Cooldowns (`RiskEngine`)**:
-   - Added `round_trip_cost` (`spread + 2 * (commission + slippage)`) so entry decisions account for both entry and exit friction.
-   - Added `RejectReason::Cooldown` (`cooldown_events` and wall-clock `cooldown_ns`) to prevent firing redundant orders on consecutive ticks of the same price wave.
+   - Added `round_trip_cost` (`spread + 2 * (commission + slippage)`) and `RejectReason::Cooldown` (`cooldown_events` and wall-clock `cooldown_ns`).
 2. **Position Lifecycle Management (`ReplayEngine`)**:
-   - Added `hold_horizon_events`, wall-clock `hold_horizon_ns`, `stop_loss_price`, and `take_profit_price` so positions are actively closed after their prediction horizon expires rather than held indefinitely.
+   - Added `hold_horizon_events`, wall-clock `hold_horizon_ns`, `stop_loss_price`, and `take_profit_price`.
 3. **Wall-Clock Provider-Timestamp Windows (`BehaviorEngine`)**:
-   - Between `DEV` (6.48 hours for 100k ticks) and `VAL` (2.95 hours for 100k ticks), the tick arrival rate more than doubled. Fixed tick-count windows shrank in wall-clock duration by >50% during `VAL`.
-   - Added `window_short_ns`, `window_mid_ns`, and `window_long_ns` (`120s / 240s / 720s` in `config/real_eurusd.json`) anchored to `source_time_ns`, making feature extraction invariant to session tick-rate fluctuations.
+   - Added `window_short_ns`, `window_mid_ns`, and `window_long_ns` (`120s / 240s / 720s` in `config/real_eurusd.json`) anchored to `source_time_ns`, eliminating tick-arrival-rate distortion across sessions.
 4. **Multi-Scale Regime Efficiency & Intra-Window Exhaustion (`BehaviorEngine` & `ScoringPredictor`)**:
-   - Added `regime_efficiency` $\in [0, 1]$ (ratio of net macro displacement `|disp_long|` to the sum of sub-block absolute displacements) to separate directional trends from mean-reverting chop (`min_continuation_efficiency`, `max_reversal_efficiency`).
-   - Added scale-invariant inter-window and intra-window deceleration (`decel_intra`) and response fade (`fade_intra`) comparing the first half and second half of the short window.
-5. **Causal Forward-Return & Non-Overlapping Block Statistics (`ReplayEngine` & `Report`)**:
-   - Added single-pass, look-ahead-free evaluation of every usable signal against realized midpoint and spread-crossed prices at `t + eval_horizon_ns`, alongside a **Naive Directional Baseline** (`disp_short` continuation) and autocorrelation-robust **Non-Overlapping Horizon Block** $t$-statistics.
+   - Added `regime_efficiency` $\in [0, 1]$ (`min_continuation_efficiency`, `max_reversal_efficiency`) and intra-window deceleration/fade (`decel_intra`, `fade_intra`).
+5. **Causal Forward-Return, Non-Overlapping Block $t$-Stats & Score Calibration (`ReplayEngine` & `Report`)**:
+   - Evaluates every usable signal at `t + eval_horizon_ns` against a **Naive Directional Baseline** (`disp_short` continuation), computes autocorrelation-robust **Non-Overlapping Horizon Block** $t$-statistics, and outputs a **5-Bin Score Reliability & Brier Calibration Table** (`docs/testing_plan.md` §6.4–6.6).
+6. **Live / Paper Stream CLI Mode (`src/main.cpp`)**:
+   - Added `--data -` (stdin streaming) and `--stream` to emit real-time JSONL `DECISION` and `FILL` telemetry events as quotes arrive.
 
 ---
 
-## 3. Empirical Results Across `DEV`, `VAL`, and `OOS`
+## 3. Empirical Results Across All Four Splits (`DEV`, `VAL`, `OOS`, `OOS2`)
 
-Configuration: [`config/real_eurusd.json`](../config/real_eurusd.json), locked via walk-forward selection on `DEV` and `VAL` (`scripts/calibrate_walk_forward.py`).
+Configuration: [`config/real_eurusd.json`](../config/real_eurusd.json), locked via walk-forward selection on `DEV` and `VAL` (`scripts/calibrate_walk_forward.py`) before evaluating `OOS` and `OOS2`.
 
-| Metric | `DEV` (100k ticks, 6.48h) | `VAL` (100k ticks, 2.95h) | `OOS` (100k ticks, 3.55h) | **Cumulative (300k ticks, 12.98h)** |
-|---|---|---|---|---|
-| **Full Report** | [`real_eurusd_dev_report.md`](../reports/real_eurusd_dev_report.md) | [`real_eurusd_val_report.md`](../reports/real_eurusd_val_report.md) | [`real_eurusd_oos_report.md`](../reports/real_eurusd_oos_report.md) | — |
-| **Valid / Rejected Events** | `96,419` / `3,581` (`NegativeSpread`) | `89,127` / `10,873` (`NegativeSpread`) | `90,477` / `9,523` (`NegativeSpread`) | `276,023` / `23,977` |
-| **Usable Signals** | `6,422` (`6.66%`) | `3,926` (`4.41%`) | `4,292` (`4.74%`) | `14,640` (`5.30%`) |
-| **`Continuation` Hit Rate (Spread-Crossed Move)** | **54.24%** (`+5.84 pips`, $N=2642$) | **73.79%** (`+3.23 pips`, $N=931$) | `30.75%` (`-2.08 pips`, $N=1239$) | Strong in trending sessions (`DEV`, `VAL`) |
-| **`Reversal` Hit Rate (Spread-Crossed Move)** | `38.11%` (`-2.10 pips`, $N=3773$) | `43.53%` (`-0.69 pips`, $N=2911$) | **63.29%** (`+0.82 pips`, $N=2408$) | Strong in mean-reverting session (`OOS`) |
-| **Non-Overlapping Block Hit Rate (`All Signals` vs `Baseline`)** | **50.98%** ($t = +1.46$) vs `37.10%` ($t = -1.91$) | **50.00%** vs `46.30%` | **51.52%** (`Reversal` **55.17%**, $t = +0.26$) | Beats naive baseline in `DEV` and `VAL` |
-| **Orders Submitted / Fills** | `88` / `88` | `51` / `51` | `61` / `61` | `200` / `200` |
-| **Gross P&L (after spread)** | **`+$42.00`** | **`+$5.20`** | **`+$2.10`** | **`+$49.30` (Positive in all 3 splits)** |
-| **Net P&L (after spread, commission & slippage)** | **`+$33.20`** | **`+$0.10`** | **`-$4.00`** | **`+$29.30`** |
-| **Max Drawdown** | `$19.10` (`0.019%`) | `$24.40` (`0.024%`) | `$36.10` (`0.036%`) | $\le 0.036\%$ |
-| **Median Latency (Event / Signal / Decision)** | `1.1 / 1.7 / 0.3 µs` | `1.1 / 1.7 / 0.3 µs` | `1.1 / 1.7 / 0.3 µs` | `~3.1 µs` total per tick |
+| Metric | `DEV` (100k, 6.48h) | `VAL` (100k, 2.95h) | `OOS` (100k, 3.55h) | `OOS2` (161.4k, 8.00h) | **Total (461.4k ticks, 20.98h)** |
+|---|---|---|---|---|---|
+| **Full Report** | [`real_eurusd_dev_report.md`](../reports/real_eurusd_dev_report.md) | [`real_eurusd_val_report.md`](../reports/real_eurusd_val_report.md) | [`real_eurusd_oos_report.md`](../reports/real_eurusd_oos_report.md) | [`real_eurusd_oos2_report.md`](../reports/real_eurusd_oos2_report.md) | — |
+| **Valid / Rejected Events** | `96,419` / `3,581` | `89,127` / `10,873` | `90,477` / `9,523` | `144,122` / `17,235` | `420,145` / `41,212` |
+| **Usable Signals** | `6,422` (`6.66%`) | `3,926` (`4.41%`) | `4,292` (`4.74%`) | `4,046` (`2.81%`) | `18,686` (`4.45%`) |
+| **`Continuation` Hit Rate (Spread-Crossed)** | **54.24%** (`+5.84 pips`) | **73.79%** (`+3.23 pips`) | `30.75%` (`-2.08 pips`) | **57.26%** (`+0.79 pips`) | Positive in **3 of 4** splits |
+| **`Reversal` Hit Rate (Spread-Crossed)** | `38.11%` (`-2.10 pips`) | `43.53%` (`-0.69 pips`) | **63.29%** (`+0.82 pips`) | `46.13%` (`-0.59 pips`) | Dominant in mean-reverting `OOS` |
+| **Non-Overlapping Block Hit Rate (`All` vs `Baseline`)** | **50.98%** ($t=+1.46$) vs `37.10%` ($t=-1.91$) | **50.00%** vs `46.30%` | **51.52%** (`Reversal` **55.17%**) | **54.90%** vs `40.26%` ($t=-2.51$) | Beats naive baseline in `DEV`, `VAL`, `OOS2` |
+| **Orders Submitted / Fills** | `88` / `88` | `51` / `51` | `61` / `61` | `82` / `82` | `282` / `282` |
+| **Gross P&L (after spread)** | **`+$42.00`** | **`+$5.20`** | **`+$2.10`** | **`+$1.50`** | **`+$50.80` (Positive in 4/4 splits!)** |
+| **Net P&L (after spread, commission & slippage)** | **`+$33.20`** | **`+$0.10`** | **`-$4.00`** | **`-$6.70`** | **`+$22.60`** |
+| **Max Drawdown** | `$19.10` (`0.019%`) | `$24.40` (`0.024%`) | `$36.10` (`0.036%`) | `$16.20` (`0.016%`) | $\le 0.036\%$ |
 
 ---
 
-## 4. Key Takeaways and Limitations
+## 4. Score Reliability & Brier Calibration Findings (`docs/testing_plan.md` §6.6)
 
-1. **Positive Gross P&L Across All Three Splits**: After spread crossing (buying at the ask, selling at the bid), the engine achieved positive Gross P&L in `DEV` (`+$42.00`), `VAL` (`+$5.20`), and `OOS` (`+$2.10`), totaling **`+$49.30` Gross P&L** and **`+$29.30` Net P&L** after commission and slippage across 200 fills.
-2. **Regime Complementarity**: `Continuation` signals dominated during directional sessions (`54.2%` hit rate in `DEV`, `73.8%` in `VAL`), whereas `Reversal` signals dominated during the choppy `OOS` session (`63.3%` hit rate across 2,408 signals, `55.2%` across non-overlapping 3-minute blocks).
-3. **Remaining Limitations**: A 300,000-tick (~13-hour) sample spans a single trading day (`108` independent non-overlapping 3-minute signal blocks across `DEV + VAL + OOS`). Demonstrating statistically significant multi-regime profitability requires extending the same locked protocol across multi-week and multi-month tick archives.
+The new 5-bin calibration table reveals why `continuation_score` and `reversal_score` must remain labeled as **scores** rather than calibrated probabilities across mixed regimes:
+
+- **Within `Continuation` (`[0.0, 0.4)` score bins)**: Because `continuation_score` multiplies by `persistence` ($\approx 0.15\text{--}0.35$), usable continuation signals cluster in `[0.0, 0.2)` and `[0.2, 0.4)`. Within those two bins, realized accuracy increases monotonically with score across `DEV` (`51.85%` $\to$ **`58.63%`**, `+7.55 pips`), `VAL` (`71.09%` $\to$ **`85.47%`**, `+7.00 pips`), and `OOS2` (`51.72%` $\to$ **`73.65%`**, `+1.90 pips`).
+- **Within `Reversal` (`[0.4, 1.0]` score bins)**: During the mean-reverting `OOS` session, reliability is strictly monotonic across all five bins (`30.09%` $\to$ `38.42%` $\to$ `46.25%` $\to$ **`64.60%`** $\to$ **`90.63%`** in `[0.8, 1.0]`, achieving a Brier score of **`0.0877`** in the top bin and **`0.2356`** overall). During strong trending sessions (`DEV`), high reversal scores fade persistent trends and underperform (`42.53%` in `[0.6, 0.8)`), confirming that probability calibration is regime-conditional.

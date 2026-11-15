@@ -74,8 +74,8 @@ def fetch_and_convert(max_rows=50000, out_path="examples/real_eurusd_ticks.csv",
 
     print(f"Done! Converted {count} real EURUSD ticks (skipped {skipped}) to {out_path}", flush=True)
 
-def fetch_and_split(dev_rows=100000, val_rows=100000, oos_rows=100000, symbol="EURUSD"):
-    print(f"Downloading and splitting FXCM stream into chronological dev/val/oos sets...", flush=True)
+def fetch_and_split(dev_rows=100000, val_rows=100000, oos_rows=100000, oos2_rows=0, symbol="EURUSD"):
+    print(f"Downloading and splitting FXCM stream into chronological dev/val/oos/oos2 sets...", flush=True)
     req = urllib.request.Request(URL, headers={"User-Agent": "Mozilla/5.0"})
     os.makedirs("examples", exist_ok=True)
 
@@ -83,6 +83,7 @@ def fetch_and_split(dev_rows=100000, val_rows=100000, oos_rows=100000, symbol="E
         ("dev", "examples/real_eurusd_dev.csv", dev_rows),
         ("val", "examples/real_eurusd_val.csv", val_rows),
         ("oos", "examples/real_eurusd_oos.csv", oos_rows),
+        ("oos2", "examples/real_eurusd_oos2.csv", oos2_rows),
     ]
 
     with urllib.request.urlopen(req, timeout=60) as resp:

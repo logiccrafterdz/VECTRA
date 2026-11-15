@@ -303,6 +303,9 @@ VT_TEST(Replay, ForwardSignalStatsAreEvaluatedCausally) {
   VT_ASSERT_TRUE(stats.forward_all.non_overlapping > 0);
   VT_ASSERT_TRUE(stats.forward_all.non_overlapping < stats.forward_all.evaluated);
   VT_ASSERT_TRUE(stats.forward_baseline.evaluated >= stats.forward_all.evaluated);
+  VT_ASSERT_EQ(stats.calibration_total.count, stats.forward_all.evaluated);
+  VT_ASSERT_TRUE(stats.calibration_total.brier_score() >= 0.0);
+  VT_ASSERT_TRUE(stats.calibration_total.brier_score() <= 1.0);
 }
 
 VT_TEST(Replay, HorizonExitClosesOpenPositionAfterConfiguredEvents) {

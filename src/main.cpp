@@ -20,13 +20,14 @@ void print_usage() {
       "VECTRA replay tool (v0.1)\n"
       "\n"
       "Usage:\n"
-      "  vectra --data <ticks.csv> [--config <config.json>] [--report <out.md>] [--quiet]\n"
+      "  vectra --data <ticks.csv|-> [--config <config.json>] [--report <out.md>] [--stream] [--quiet]\n"
       "\n"
       "Options:\n"
-      "  --data <path>     CSV tick file (required)\n"
+      "  --data <path>     CSV tick file, or '-' to read live stream from stdin\n"
       "  --config <path>   JSON configuration (default: config/default.json if present,\n"
       "                    otherwise built-in defaults)\n"
       "  --report <path>   write a markdown report to this path\n"
+      "  --stream          emit real-time JSONL decision and fill events to stdout\n"
       "  --quiet           print only the one-line summary\n"
       "  --help            show this message\n");
 }
@@ -35,6 +36,7 @@ struct Options {
   std::string data_path;
   std::string config_path;
   std::string report_path;
+  bool stream = false;
   bool quiet = false;
 };
 
@@ -54,6 +56,11 @@ bool parse_args(int argc, char** argv, Options& options, bool& show_help) {
       return true;
     } else if (arg == "--quiet" || arg == "-q") {
       options.quiet = true;
+    } else if (arg == "--stream") {
+      options.stream = true;
+      if (options.data_path.empty()) {
+        options.data_path = "-";
+      }
     } else if (arg == "--data") {
       const char* value = require_value("--data");
       if (value == nullptr) return false;
@@ -112,17 +119,27 @@ int main(int argc, char** argv) {
     }
   }
 
-  // --- input ---------------------------------------------------------------
-  std::ifstream input(options.data_path);
-  if (!input) {
-    std::fprintf(stderr, "error: cannot open data file: %s\n", options.data_path.c_str());
-    return 2;
+  if (options.stream) {
+    settings.replay.stream_decisions = true;
   }
 
-  // --- replay --------------------------------------------------------------
+  // --- input & replay ------------------------------------------------------
+  std::ifstream file_input;
+  std::istream* in_stream = &std::cin;
+  if (options.data_path != "-") {
+    file_input.open(options.data_path);
+    if (!file_input) {
+      std::fprintf(stderr, "error: cannot open data file: %s\n", options.data_path.c_str());
+      return 2;
+    }
+    in_stream = &file_input;
+  }
+
   vectra::backtest::ReplayEngine engine(settings.replay);
-  const vectra::backtest::ReplayStats stats = engine.run(input, options.data_path);
-  input.close();
+  const vectra::backtest::ReplayStats stats = engine.run(*in_stream, options.data_path);
+  if (file_input.is_open()) {
+    file_input.close();
+  }
 
   // --- report --------------------------------------------------------------
   if (!options.report_path.empty()) {

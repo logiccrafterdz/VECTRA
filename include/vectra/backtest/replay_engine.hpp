@@ -12,6 +12,7 @@
 // observed quotes, and any real order-flow information.
 #pragma once
 
+#include <array>
 #include <cmath>
 #include <cstdint>
 #include <deque>
@@ -61,6 +62,7 @@ struct ReplayConfig {
   // Memory control: when false, SignalRecord / DecisionRecord vectors are not
   // retained in memory (digest is still computed on the fly).
   bool retain_tick_records = true;
+  bool stream_decisions = false;
 };
 
 struct SignalHorizonStats {
@@ -102,6 +104,27 @@ struct SignalHorizonStats {
     }
     return non_overlapping_mean_spread /
            (s / std::sqrt(static_cast<double>(non_overlapping)));
+  }
+};
+
+struct CalibrationBin {
+  std::size_t count = 0;
+  std::size_t hits = 0;
+  double sum_score = 0.0;
+  double sum_brier = 0.0;
+  double sum_net_spread_move = 0.0;
+
+  double mean_score() const {
+    return count > 0 ? sum_score / static_cast<double>(count) : 0.0;
+  }
+  double hit_rate() const {
+    return count > 0 ? static_cast<double>(hits) / static_cast<double>(count) : 0.0;
+  }
+  double brier_score() const {
+    return count > 0 ? sum_brier / static_cast<double>(count) : 0.0;
+  }
+  double mean_net_spread_move() const {
+    return count > 0 ? sum_net_spread_move / static_cast<double>(count) : 0.0;
   }
 };
 
@@ -154,6 +177,8 @@ struct ReplayStats {
   SignalHorizonStats forward_continuation;
   SignalHorizonStats forward_reversal;
   SignalHorizonStats forward_baseline;  // naive always-continue-in-disp_short baseline
+  std::array<CalibrationBin, 5> calibration_bins{};  // quintile bins [0.0..0.2)..[0.8..1.0]
+  CalibrationBin calibration_total{};
 
   // --- decisions ---
   std::size_t decisions_allowed = 0;
@@ -234,6 +259,7 @@ class ReplayEngine {
     bool is_baseline = false;
     bool non_overlapping_all = false;
     bool non_overlapping_kind = false;
+    double score = 0.0;
   };
 
   void handle_order_events(std::int64_t now_ns, market::Price bid, market::Price ask);
