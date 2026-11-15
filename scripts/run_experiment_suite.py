@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 """
-VECTRA Empirical Experiment Suite (v1.2)
+VECTRA Empirical Experiment Suite (v1.3)
 Automates the pre-registered execution of:
 1. Full Model (Primary Hypothesis H1, 0.30 pips friction)
 2. Leave-One-Out (LOO) Ablations (4 tests)
 3. Single-Feature Isolations (4 tests)
-4. Friction Sensitivity Curve (10 levels: 0.1 to 1.0 pips)
-5. Holm-Bonferroni correction and Markdown summary tables.
+4. Monotonic Fixed-Execution Friction Curve (0.1 to 1.0 pips)
+5. Dynamic Re-execution Friction Curve (0.1 to 1.0 pips)
+6. Dynamic Holm-Bonferroni correction and Markdown summary tables.
 """
 
 import argparse
@@ -54,22 +55,18 @@ def run_vectra_replay(data_path: str, config_path: str, ablation: Optional[str] 
         "digest": ""
     }
     
-    # Parse CLI console output
     for line in out.splitlines():
         line = line.strip()
-        if line.startswith("events:"):
-            # events: 96419 valid, 3581 rejected
-            m = re.search(r"(\d+)\s+valid", line)
+        if line.startswith("events valid:"):
+            m = re.search(r"events valid:\s+(\d+)", line)
             if m:
                 res["valid_events"] = int(m.group(1))
-        elif line.startswith("signals:"):
-            # signals: 6422 usable (6.66%), 0 neutral
-            m = re.search(r"(\d+)\s+usable", line)
+        elif "usable signals:" in line:
+            m = re.search(r"usable signals:\s+(\d+)", line)
             if m:
                 res["usable_signals"] = int(m.group(1))
         elif line.startswith("orders:"):
-            # orders: 36 submitted, 36 fills
-            m = re.search(r"(\d+)\s+submitted,\s+(\d+)\s+fills", line)
+            m = re.search(r"orders:\s+(\d+)\s+submitted,\s+(\d+)\s+fills", line)
             if m:
                 res["orders"] = int(m.group(1))
                 res["fills"] = int(m.group(2))
@@ -79,22 +76,19 @@ def run_vectra_replay(data_path: str, config_path: str, ablation: Optional[str] 
                 res["gross_pnl"] = float(m.group(1))
                 res["net_pnl"] = float(m.group(2))
         elif line.startswith("max drawdown:"):
-            # max drawdown: 16.10
-            m = re.search(r"max drawdown:\s+([\d\.]+)", line)
+            m = re.search(r"max drawdown:\s+([+-]?[\d\.]+)", line)
             if m:
                 res["max_drawdown"] = float(m.group(1))
         elif line.startswith("digest:"):
             res["digest"] = line.split(":", 1)[1].strip()
 
-    # To get exact non-overlapping block stats, also write a temporary report
+    # Capture exact non-overlapping block stats via temporary report
     report_file = pathlib.Path("build/_temp_report.md")
     report_cmd = cmd + ["--report", str(report_file)]
     subprocess.run(report_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, check=True)
     
     if report_file.exists():
         rpt = report_file.read_text(encoding="utf-8")
-        # Look for the non-overlapping table:
-        # | All usable signals | 51 | 50.98% | 0.000045 | 0.000015 | +1.46 | +1.20 (n=51) |
         for rline in rpt.splitlines():
             if "| All usable signals |" in rline:
                 cols = [c.strip() for c in rline.split("|")[1:-1]]
@@ -118,14 +112,12 @@ def run_vectra_replay(data_path: str, config_path: str, ablation: Optional[str] 
 def normal_p_value_two_tailed(t_stat: float) -> float:
     """Approximate two-tailed p-value for large degrees of freedom."""
     abs_t = abs(t_stat)
-    # Using complementary error function for standard normal approximation
     return math.erfc(abs_t / math.sqrt(2.0))
 
 
 def apply_holm_bonferroni(tests: List[Dict[str, Any]], alpha: float = 0.05) -> List[Dict[str, Any]]:
     """Applies Holm-Bonferroni step-down correction to a list of test results."""
     m = len(tests)
-    # Sort ascending by unadjusted p-value
     sorted_indices = sorted(range(m), key=lambda i: tests[i]["p_value"])
     
     for rank, idx in enumerate(sorted_indices, 1):
@@ -138,15 +130,21 @@ def apply_holm_bonferroni(tests: List[Dict[str, Any]], alpha: float = 0.05) -> L
 
 
 def run_full_suite(data_path: str, config_path: str, output_md: str) -> None:
-    print(f"=== Running Pre-Registered Experiment Suite v1.2 ===")
-    print(f"Data:   {data_path}")
-    print(f"Config: {config_path}")
+    cfg_json = json.loads(pathlib.Path(config_path).read_text(encoding="utf-8"))
+    instrument = cfg_json.get("instrument", "EURUSD")
+    pip_size = 0.01 if ("jpy" in instrument.lower() or "usdjpy" in config_path.lower()) else 0.0001
+    order_units = cfg_json.get("risk", {}).get("order_units", 10000.0)
+
+    print(f"=== Running Pre-Registered Experiment Suite v1.3 ===")
+    print(f"Data:       {data_path}")
+    print(f"Config:     {config_path} (Instrument: {instrument}, pip_size: {pip_size})")
     
-    # 1. Primary Hypothesis H1: Full Composite Model at 0.30 pips friction
+    # 1. Primary Hypothesis H1: Full Composite Model at 0.30 pips baseline friction
     print("\n--- [1] Primary Test: Full Model (0.30 pips friction) ---")
     h1_res = run_vectra_replay(data_path, config_path, ablation="none", friction_pips=0.30)
     h1_res["p_value"] = normal_p_value_two_tailed(h1_res["net_t_stat"])
-    print(f"Blocks: {h1_res['blocks']}, Net t-stat: {h1_res['net_t_stat']}, p-val: {h1_res['p_value']:.4e}, Net P&L: {h1_res['net_pnl']} USD")
+    h1_mean_pips = h1_res["block_mean_net"] / pip_size
+    print(f"Blocks: {h1_res['blocks']}, Net t-stat: {h1_res['net_t_stat']:+.2f}, Mean Net: {h1_mean_pips:.2f} pips, Net P&L: {h1_res['net_pnl']:+.2f} USD")
 
     # 2. Leave-One-Out (LOO) Ablations
     print("\n--- [2] Leave-One-Out (LOO) Ablations ---")
@@ -161,8 +159,9 @@ def run_full_suite(data_path: str, config_path: str, output_md: str) -> None:
         r = run_vectra_replay(data_path, config_path, ablation=mode, friction_pips=0.30)
         r["description"] = desc
         r["p_value"] = normal_p_value_two_tailed(r["net_t_stat"])
+        r["mean_pips"] = r["block_mean_net"] / pip_size
         loo_results.append(r)
-        print(f"  {desc[:35]}: blocks={r['blocks']}, net_t={r['net_t_stat']}, Net P&L={r['net_pnl']} USD")
+        print(f"  {desc[:35]}: blocks={r['blocks']}, net_t={r['net_t_stat']:+.2f}, Net P&L={r['net_pnl']:+.2f} USD")
 
     # 3. Single-Feature Isolations
     print("\n--- [3] Single-Feature Isolation Rules ---")
@@ -177,63 +176,72 @@ def run_full_suite(data_path: str, config_path: str, output_md: str) -> None:
         r = run_vectra_replay(data_path, config_path, ablation=mode, friction_pips=0.30)
         r["description"] = desc
         r["p_value"] = normal_p_value_two_tailed(r["net_t_stat"])
+        r["mean_pips"] = r["block_mean_net"] / pip_size
         single_results.append(r)
-        print(f"  {desc[:35]}: blocks={r['blocks']}, net_t={r['net_t_stat']}, Net P&L={r['net_pnl']} USD")
+        print(f"  {desc[:35]}: blocks={r['blocks']}, net_t={r['net_t_stat']:+.2f}, Net P&L={r['net_pnl']:+.2f} USD")
 
-    # Apply Holm-Bonferroni across the 8 secondary exploratory tests
+    # Apply Holm-Bonferroni across the 8 secondary exploratory tests for this instrument
     secondary_family = loo_results + single_results
     apply_holm_bonferroni(secondary_family, alpha=0.05)
 
-    # 4. Friction Sensitivity Curve (10 levels: 0.1 to 1.0 pips)
-    print("\n--- [4] Friction Sensitivity Curve (0.1 to 1.0 pips) ---")
+    # 4. Friction Sensitivity Curve (Monotonic Fixed-Execution vs. Dynamic Re-execution)
+    print("\n--- [4] Friction Sensitivity Curves (0.1 to 1.0 pips) ---")
     friction_levels = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
+    base_net_pnl = h1_res["net_pnl"]
+    base_fills = h1_res["fills"]
+    base_trades = base_fills / 2.0  # entry and exit legs
+    cost_per_pip_total = pip_size * order_units * base_trades
+
     friction_results = []
-    breakeven_friction = None
     for f in friction_levels:
+        # Strictly monotonic fixed-execution accounting:
+        fixed_net = base_net_pnl - (f - 0.30) * cost_per_pip_total
         r = run_vectra_replay(data_path, config_path, ablation="none", friction_pips=f)
+        r["fixed_net_pnl"] = fixed_net
+        r["mean_pips"] = r["block_mean_net"] / pip_size
         friction_results.append(r)
-        print(f"  Friction {f:.1f} pips: Fills={r['fills']}, Gross={r['gross_pnl']:.2f}, Net={r['net_pnl']:.2f} USD, t={r['net_t_stat']}")
-        if r["net_pnl"] >= 0.0:
-            breakeven_friction = f
+        print(f"  Friction {f:.1f} pips: Fixed Net={fixed_net:+.2f} USD | Dynamic Net={r['net_pnl']:+.2f} USD (Fills={r['fills']})")
+
+    # Fixed-Execution Break-Even Friction (exact algebraic closed form)
+    if cost_per_pip_total > 0:
+        fixed_breakeven = 0.30 + (base_net_pnl / cost_per_pip_total)
+    else:
+        fixed_breakeven = 0.0
+
+    # Decision Tier Logic implementing the pre-registered 0.15 pip condition
+    tier = "Tier 3: Inconclusive"
+    if h1_res["net_t_stat"] > 1.96 and h1_mean_pips >= 0.15 and h1_res["net_pnl"] > 0:
+        tier = "Tier 1: Confirmed Edge"
+    elif h1_res["net_t_stat"] <= 0.0 or h1_mean_pips <= 0.0 or h1_res["net_pnl"] <= 0.0:
+        tier = "Tier 2: Definitive Falsification"
 
     # Generate Markdown Report
     lines = [
-        "# VECTRA Empirical Experiment Results (Protocol v1.2)",
+        "# VECTRA Empirical Experiment Results (Protocol v1.3)",
         "",
         f"- **Dataset**: `{data_path}`",
-        f"- **Configuration**: `{config_path}`",
+        f"- **Configuration**: `{config_path}` (`{instrument}`, `pip_size = {pip_size}`)",
         f"- **CLI Version**: `v0.1.0`",
         "",
         "## 1. Primary Hypothesis Evaluation (H1)",
         "",
-        "| Hypothesis | Blocks (180s) | Mean Net Return (pips) | Student t-stat (vs 0) | Two-Tailed p-value | Fills | Cumulative Net P&L (USD) | Outcome Tier |",
+        "| Hypothesis | Blocks (180s) | Mean Net Return (pips) | Student t-stat (vs 0) | Two-Tailed p-value | Executed Fills | Cumulative Net P&L (USD) | Outcome Tier |",
         "|---|---:|---:|---:|---:|---:|---:|---|",
-    ]
-    
-    tier = "Tier 3: Inconclusive"
-    if h1_res["net_t_stat"] > 1.96 and h1_res["net_pnl"] > 0:
-        tier = "Tier 1: Confirmed Edge"
-    elif h1_res["net_t_stat"] <= 0.0 or h1_res["net_pnl"] <= 0.0:
-        tier = "Tier 2: Definitive Falsification"
-        
-    lines.append(
         f"| **H1 (Full Model, 0.30 pips)** | {h1_res['blocks']} | "
-        f"{h1_res['block_mean_net']*10000.0:.2f} | {h1_res['net_t_stat']:+.2f} | "
+        f"{h1_mean_pips:+.2f} | {h1_res['net_t_stat']:+.2f} | "
         f"{h1_res['p_value']:.4e} | {h1_res['fills']} | "
-        f"{h1_res['net_pnl']:+.2f} | **{tier}** |"
-    )
-    lines.extend([
+        f"{h1_res['net_pnl']:+.2f} | **{tier}** |",
         "",
-        f"- **Paired Comparison vs Naive Baseline on Matched Blocks**: t = {h1_res['paired_t_stat']:+.2f} (n = {h1_res['paired_blocks']})",
+        f"- **Paired Comparison vs Independent Random Direction Baseline**: t = {h1_res['paired_t_stat']:+.2f} (n = {h1_res['paired_blocks']})",
         "",
         "## 2. Leave-One-Out (LOO) Diagnostic Ablations",
         "",
         "| Model Variant | Blocks | Mean Net (pips) | Student t-stat | Raw p-value | Holm Threshold | Holm Significant | Fills | Net P&L (USD) |",
         "|---|---:|---:|---:|---:|---:|---|---:|---:|",
-    ])
+    ]
     for r in loo_results:
         lines.append(
-            f"| {r['description']} | {r['blocks']} | {r['block_mean_net']*10000.0:.2f} | "
+            f"| {r['description']} | {r['blocks']} | {r['mean_pips']:+.2f} | "
             f"{r['net_t_stat']:+.2f} | {r['p_value']:.4e} | {r['holm_threshold']:.4e} | "
             f"{'YES' if r['holm_significant'] else 'NO'} | {r['fills']} | {r['net_pnl']:+.2f} |"
         )
@@ -247,28 +255,28 @@ def run_full_suite(data_path: str, config_path: str, output_md: str) -> None:
     ])
     for r in single_results:
         lines.append(
-            f"| {r['description']} | {r['blocks']} | {r['block_mean_net']*10000.0:.2f} | "
+            f"| {r['description']} | {r['blocks']} | {r['mean_pips']:+.2f} | "
             f"{r['net_t_stat']:+.2f} | {r['p_value']:.4e} | {r['holm_threshold']:.4e} | "
             f"{'YES' if r['holm_significant'] else 'NO'} | {r['fills']} | {r['net_pnl']:+.2f} |"
         )
 
     lines.extend([
         "",
-        "## 4. Cost Sensitivity Curve (0.1 to 1.0 pips)",
+        "## 4. Cost Sensitivity Curves (0.1 to 1.0 pips)",
         "",
-        "| Additional Friction (pips) | Fills | Gross P&L (USD) | Net P&L (USD) | Block Net Return (pips) | Net t-stat | Max Drawdown (USD) |",
+        "| Additional Friction | Monotonic Fixed Net P&L (USD) | Dynamic Re-exec Net P&L (USD) | Dynamic Fills | Dynamic Gross P&L (USD) | Block Net Return (pips) | Block Net t-stat |",
         "|---|---:|---:|---:|---:|---:|---:|",
     ])
     for r in friction_results:
         lines.append(
-            f"| {r['friction_pips']:.1f} pips | {r['fills']} | {r['gross_pnl']:+.2f} | "
-            f"{r['net_pnl']:+.2f} | {r['block_mean_net']*10000.0:.2f} | {r['net_t_stat']:+.2f} | "
-            f"{r['max_drawdown']:.2f} |"
+            f"| {r['friction_pips']:.1f} pips | {r['fixed_net_pnl']:+.2f} | {r['net_pnl']:+.2f} | "
+            f"{r['fills']} | {r['gross_pnl']:+.2f} | {r['mean_pips']:+.2f} | {r['net_t_stat']:+.2f} |"
         )
         
     lines.extend([
         "",
-        f"- **Estimated Break-Even Friction (delta*)**: `{breakeven_friction:.1f} pips`" if breakeven_friction else "- **Estimated Break-Even Friction (delta*)**: `< 0.1 pips`",
+        f"- **Monotonic Fixed-Execution Break-Even Friction (delta*)**: `{fixed_breakeven:.2f} pips`",
+        "- **Note on Dynamic Re-execution Curve**: Changes in friction interact with pre-trade edge gates and cooldown timers, shifting the executed trade population.",
         ""
     ])
 

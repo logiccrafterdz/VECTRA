@@ -158,9 +158,10 @@ Prediction ScoringPredictor::predict(const behavior::BehaviorFeatures& f) const 
       rule_fired = true;
     }
   } else if (mode == "single_efficiency") {
-    if (direction_sign != 0.0 && f.regime_efficiency >= 0.60) {
+    const double mid_direction = f.disp_mid > 0.0 ? 1.0 : (f.disp_mid < 0.0 ? -1.0 : 0.0);
+    if (mid_direction != 0.0 && f.regime_efficiency >= 0.60) {
       p.kind = SignalKind::Continuation;
-      p.direction = direction_sign;
+      p.direction = mid_direction;
       p.continuation_score = clampd(f.regime_efficiency, 0.1, 1.0);
       p.confidence = 1.0;
       rule_fired = true;

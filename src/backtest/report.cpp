@@ -147,7 +147,7 @@ void write_markdown_report(std::ostream& out, const ReplayEngine& engine,
     write_fwd_row("Naive directional baseline", s.forward_baseline);
     out << "\n";
     out << "#### Autocorrelation-robust non-overlapping horizon blocks\n\n";
-    out << "| Signal kind | Independent blocks | Block hit rate (mid) | Block mean spread move | Block mean net return | Net t-stat (vs 0) | Paired t vs baseline |\n"
+    out << "| Signal kind | Independent blocks | Block hit rate (mid) | Block mean spread move | Block mean net return | Net t-stat (vs 0) | Paired t vs random |\n"
            "|---|---|---|---|---|---|---|\n";
     const auto write_block_row = [&out](const char* label, const SignalHorizonStats& fs, bool has_paired) {
       out << "| " << label << " | " << fs.non_overlapping << " | ";

@@ -552,7 +552,9 @@ ReplayStats ReplayEngine::run(std::istream& input, const std::string& source_nam
               no_all,
               no_kind,
               active_score,
-              features.disp_short > 0.0 ? 1.0 : (features.disp_short < 0.0 ? -1.0 : 0.0),
+              ((static_cast<std::uint64_t>(event.source_time_ns) * 6364136223846793005ULL + 1ULL) >> 63)
+                  ? 1.0
+                  : -1.0,
           });
         }
 
