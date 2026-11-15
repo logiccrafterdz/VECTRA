@@ -1,52 +1,42 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 340" width="100%" height="auto" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif">
-  <rect width="960" height="340" rx="10" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5"/>
-  <text x="30" y="36" font-size="16" font-weight="700" fill="#0f172a">NON-OVERLAPPING 180s HORIZON BLOCK HIT RATE (SPREAD-CROSSED): VECTRA vs. NAIVE BASELINE</text>
-  <text x="30" y="56" font-size="12" fill="#475569">Autocorrelation-free independent 180s horizon blocks across all 4 EUR/USD splits (beats Naive Directional Baseline in 4/4 splits)</text>
-
-  <!-- Legend -->
-  <rect x="610" y="24" width="14" height="14" rx="3" fill="#2563eb"/>
-  <text x="630" y="35" font-size="12" font-weight="600" fill="#0f172a">VECTRA All Usable Blocks</text>
-  <rect x="800" y="24" width="14" height="14" rx="3" fill="#94a3b8"/>
-  <text x="820" y="35" font-size="12" font-weight="600" fill="#475569">Naive Baseline Blocks</text>
-
-  <!-- Chart Area: y=270 is 0%, y=170 is 50%, y=110 is 80% (2px per 1%) -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 350" width="100%" height="auto" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif">
+  <rect width="960" height="350" rx="10" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5"/>
+  <text x="30" y="36" font-size="16" font-weight="700" fill="#0f172a">NON-OVERLAPPING 180s BLOCK HIT RATE (MID): VECTRA vs. NAIVE BASELINE</text>
+  <text x="30" y="56" font-size="12" fill="#475569">Generated from reports/real_eurusd_*_report.md. VECTRA "All Usable" is not significantly different from zero on any split (|t| &lt; 2).</text>
+  <rect x="610" y="72" width="14" height="14" rx="3" fill="#2563eb"/><text x="630" y="83" font-size="12" font-weight="600" fill="#0f172a">VECTRA All Usable</text>
+  <rect x="770" y="72" width="14" height="14" rx="3" fill="#94a3b8"/><text x="790" y="83" font-size="12" font-weight="600" fill="#475569">Naive Baseline</text>
   <line x1="80" y1="270" x2="910" y2="270" stroke="#64748b" stroke-width="1.5"/>
-  <line x1="80" y1="170" x2="910" y2="170" stroke="#dc2626" stroke-width="1.2" stroke-dasharray="4,4"/>
-  <text x="70" y="174" font-size="11" font-weight="600" fill="#dc2626" text-anchor="end">50.0%</text>
-  <line x1="80" y1="130" x2="910" y2="130" stroke="#e2e8f0" stroke-width="1"/>
-  <text x="70" y="134" font-size="11" fill="#64748b" text-anchor="end">70.0%</text>
-  <line x1="80" y1="210" x2="910" y2="210" stroke="#e2e8f0" stroke-width="1"/>
-  <text x="70" y="214" font-size="11" fill="#64748b" text-anchor="end">30.0%</text>
-
-  <!-- DEV: VECTRA 50.98% (102px -> y=168), Baseline 37.10% (74.2px -> y=195.8) -->
-  <rect x="135" y="168" width="52" height="102" rx="4" fill="#2563eb"/>
-  <text x="161" y="160" font-size="11" font-weight="700" fill="#1d4ed8" text-anchor="middle">50.98%</text>
+  <line x1="80" y1="210.0" x2="910" y2="210.0" stroke="#e2e8f0" stroke-width="1"/>
+  <text x="70" y="214.0" font-size="11" fill="#64748b" text-anchor="end">30.0%</text>
+  <line x1="80" y1="170.0" x2="910" y2="170.0" stroke="#dc2626" stroke-width="1.2" stroke-dasharray="4,4"/>
+  <text x="70" y="174.0" font-size="11" fill="#dc2626" text-anchor="end">50.0%</text>
+  <line x1="80" y1="130.0" x2="910" y2="130.0" stroke="#e2e8f0" stroke-width="1"/>
+  <text x="70" y="134.0" font-size="11" fill="#64748b" text-anchor="end">70.0%</text>
+  <rect x="135" y="168.0" width="52" height="102.0" rx="4" fill="#2563eb"/>
+  <text x="161" y="160.0" font-size="11" font-weight="700" fill="#1d4ed8" text-anchor="middle">50.98%</text>
   <rect x="195" y="195.8" width="52" height="74.2" rx="4" fill="#94a3b8"/>
-  <text x="221" y="188" font-size="11" font-weight="600" fill="#475569" text-anchor="middle">37.10%</text>
-  <text x="191" y="294" font-size="12" font-weight="700" fill="#0f172a" text-anchor="middle">DEV (102 blocks)</text>
-  <text x="191" y="311" font-size="10" fill="#15803d" text-anchor="middle">+13.88% edge (t = +1.46 vs -1.91)</text>
-
-  <!-- VAL: VECTRA 50.00% (100px -> y=170), Baseline 46.30% (92.6px -> y=177.4) -->
-  <rect x="335" y="170" width="52" height="100" rx="4" fill="#2563eb"/>
-  <text x="361" y="162" font-size="11" font-weight="700" fill="#1d4ed8" text-anchor="middle">50.00%</text>
+  <text x="221" y="187.8" font-size="11" font-weight="600" fill="#475569" text-anchor="middle">37.10%</text>
+  <text x="191" y="294" font-size="12" font-weight="700" fill="#0f172a" text-anchor="middle">DEV</text>
+  <text x="191" y="311" font-size="10" fill="#475569" text-anchor="middle">VECTRA: 51 blocks, t = +1.46</text>
+  <text x="191" y="326" font-size="10" fill="#475569" text-anchor="middle">Baseline: 124 blocks, t = -1.91</text>
+  <rect x="335" y="170.0" width="52" height="100.0" rx="4" fill="#2563eb"/>
+  <text x="361" y="162.0" font-size="11" font-weight="700" fill="#1d4ed8" text-anchor="middle">50.00%</text>
   <rect x="395" y="177.4" width="52" height="92.6" rx="4" fill="#94a3b8"/>
-  <text x="421" y="170" font-size="11" font-weight="600" fill="#475569" text-anchor="middle">46.30%</text>
-  <text x="391" y="294" font-size="12" font-weight="700" fill="#0f172a" text-anchor="middle">VAL (54 blocks)</text>
-  <text x="391" y="311" font-size="10" fill="#15803d" text-anchor="middle">+3.70% edge (Rev 52.63%)</text>
-
-  <!-- OOS 1: VECTRA 51.52% (103px -> y=167), Baseline 43.94% (87.9px -> y=182.1) -->
-  <rect x="535" y="167" width="52" height="103" rx="4" fill="#2563eb"/>
-  <text x="561" y="159" font-size="11" font-weight="700" fill="#1d4ed8" text-anchor="middle">51.52%</text>
-  <rect x="595" y="182.1" width="52" height="87.9" rx="4" fill="#94a3b8"/>
-  <text x="621" y="175" font-size="11" font-weight="600" fill="#475569" text-anchor="middle">43.94%</text>
-  <text x="591" y="294" font-size="12" font-weight="700" fill="#0f172a" text-anchor="middle">OOS 1 (66 blocks)</text>
-  <text x="591" y="311" font-size="10" fill="#15803d" text-anchor="middle">+7.58% edge (Rev 55.17%)</text>
-
-  <!-- OOS 2: VECTRA 54.90% (109.8px -> y=160.2), Baseline 40.26% (80.5px -> y=189.5) -->
-  <rect x="735" y="160.2" width="52" height="109.8" rx="4" fill="#16a34a"/>
-  <text x="761" y="152" font-size="11" font-weight="700" fill="#15803d" text-anchor="middle">54.90%</text>
+  <text x="421" y="169.4" font-size="11" font-weight="600" fill="#475569" text-anchor="middle">46.30%</text>
+  <text x="391" y="294" font-size="12" font-weight="700" fill="#0f172a" text-anchor="middle">VAL</text>
+  <text x="391" y="311" font-size="10" fill="#475569" text-anchor="middle">VECTRA: 26 blocks, t = -0.71</text>
+  <text x="391" y="326" font-size="10" fill="#475569" text-anchor="middle">Baseline: 54 blocks, t = -0.30</text>
+  <rect x="535" y="167.0" width="52" height="103.0" rx="4" fill="#2563eb"/>
+  <text x="561" y="159.0" font-size="11" font-weight="700" fill="#1d4ed8" text-anchor="middle">51.52%</text>
+  <rect x="595" y="160.9" width="52" height="109.1" rx="4" fill="#94a3b8"/>
+  <text x="621" y="152.9" font-size="11" font-weight="600" fill="#475569" text-anchor="middle">54.55%</text>
+  <text x="591" y="294" font-size="12" font-weight="700" fill="#0f172a" text-anchor="middle">OOS 1</text>
+  <text x="591" y="311" font-size="10" fill="#475569" text-anchor="middle">VECTRA: 33 blocks, t = -0.37</text>
+  <text x="591" y="326" font-size="10" fill="#475569" text-anchor="middle">Baseline: 66 blocks, t = +0.49</text>
+  <rect x="735" y="160.2" width="52" height="109.8" rx="4" fill="#2563eb"/>
+  <text x="761" y="152.2" font-size="11" font-weight="700" fill="#1d4ed8" text-anchor="middle">54.90%</text>
   <rect x="795" y="189.5" width="52" height="80.5" rx="4" fill="#94a3b8"/>
-  <text x="821" y="182" font-size="11" font-weight="600" fill="#475569" text-anchor="middle">40.26%</text>
-  <text x="791" y="294" font-size="12" font-weight="700" fill="#0f172a" text-anchor="middle">OOS 2 (153 blocks)</text>
-  <text x="791" y="311" font-size="10" fill="#15803d" text-anchor="middle">+14.64% edge (Cont 68.57%, t=+2.43)</text>
+  <text x="821" y="181.5" font-size="11" font-weight="600" fill="#475569" text-anchor="middle">40.26%</text>
+  <text x="791" y="294" font-size="12" font-weight="700" fill="#0f172a" text-anchor="middle">OOS 2</text>
+  <text x="791" y="311" font-size="10" fill="#475569" text-anchor="middle">VECTRA: 51 blocks, t = -0.22</text>
+  <text x="791" y="326" font-size="10" fill="#475569" text-anchor="middle">Baseline: 154 blocks, t = -2.51</text>
 </svg>

@@ -217,3 +217,96 @@ approximation drifts on larger moves).
 
 A negative result on any of these is a *successful* experiment: the engine is
 designed to report it.
+
+## 11. Wall-clock mode and later extensions (as implemented)
+
+Sections 1-10 describe the original v0.1 model. The configuration used for the
+EUR/USD study ([`config/real_eurusd.json`](../config/real_eurusd.json)) enables
+the extensions below. Each formula is transcribed from the source file named
+in its heading; if code and this document disagree, the code is authoritative.
+
+### 11.1 Wall-clock windows (`src/behavior/behavior_engine.cpp`)
+
+With `window_short_ms / window_mid_ms / window_long_ms = 120000 / 240000 / 720000`,
+for each window `W` the engine finds the oldest buffered event `k_W` with
+`t_i - t_{k_W} <= tau_W` (provider timestamps, `source_time_ns`):
+
+```
+D_W  = ln(m_i / m_{k_W})              signed log displacement over W
+n_W  = max(1, i - k_W)                ticks inside W
+v_W  = D_W / n_W                      response: displacement per tick
+z_W  = D_W / (sigma * sqrt(n_W))      sigma = rolling Welford std of tick log returns
+```
+
+### 11.2 Deceleration (wall-clock mode)
+
+```
+vol_scale    = sigma * sqrt(n_S)
+D_prev       = D_M - D_S                        displacement in the 120 s before the short window
+decel_inter  = sgn(D_S) * (D_prev - D_S) / (vol_scale * sqrt(2))
+D_recent     = ln(m_i / m_{k_half})             last half of the short window (60 s)
+D_older      = D_S - D_recent
+decel_intra  = sgn(D_S) * (D_older - D_recent) / vol_scale
+deceleration = clamp(max(decel_inter, decel_intra), -1, 1)
+```
+
+### 11.3 Response fade
+
+```
+fade_inter    = clamp(1 - |v_S| / |v_M|, 0, 1)
+fade_intra    = clamp(1 - |D_recent / n_half| / |v_S|, 0, 1)    (wall-clock mode only)
+response_fade = max(fade_inter, fade_intra)
+```
+
+### 11.4 Block regime efficiency
+
+The long window is cut into `K = clamp(n_L / n_S, 2, 16)` (and `K <= n_L`)
+contiguous blocks of equal tick count:
+
+```
+regime_efficiency = clamp(|D_L| / sum_k |ln(m_end(k) / m_start(k))|, 0, 1)
+```
+
+Values near 1 indicate a steady one-directional path; values near 0 indicate
+oscillation. Continuation requires `regime_efficiency >= min_continuation_efficiency`
+(0.55 in the study config); reversal requires `<= max_reversal_efficiency` (1.0, i.e. off).
+
+### 11.5 Exhaustion score (`src/behavior/exhaustion.cpp`)
+
+```
+extension     = clamp(|z_S| / z_normalization, 0, 1)
+deceleration  = clamp(deceleration, 0, 1)
+response_fade = clamp(response_fade, 0, 1)
+quality       = clamp(w_spread * spread_excess + w_stale * stale + w_activity * low_activity, 0, 1)
+E = (0.30 * extension + 0.25 * deceleration + 0.35 * response_fade + 0.10 * quality) / (sum of weights)
+```
+
+### 11.6 Branch scores and expected move (`src/prediction/scoring_predictor.cpp`)
+
+```
+gate        = clamp(|z_S| / min_extension_z, 0, 1)
+P+          = clamp(persistence, 0, 1)
+C_cont      = (1 - E) * gate * P+
+C_rev       = E * gate * (1 - P+)
+strength    = C_branch * scale_branch          scale_cont = 1.00, scale_rev = 0.45
+expected_move_log = direction * strength * clamp(|D_S|, 0, max_expected_move_log)
+```
+
+`scale_rev` compensates for `C_rev` being structurally larger than `C_cont`
+(persistence is usually small, so `1 - P+` is close to 1). The expected move is
+a heuristic magnitude, not a forecast distribution.
+
+### 11.7 Round-trip cost gate (`src/risk/risk_engine.cpp`)
+
+With `round_trip_cost = true`:
+
+```
+cost  = 2 * (spread / 2 + commission + slippage) = spread + 2 * (commission + slippage)
+edge  = expm1(|expected_move_log|) * mid - cost
+allow iff edge >= min_expected_edge (1e-4 in the study config) and all other gates pass
+```
+
+The other gates are: kill switch, risk disabled, invalid signal, no signal,
+data health (invalid-tick ratio and staleness), spread ceiling, max position,
+max exposure, daily loss limit, max open orders, max orders per day, and the
+wall-clock cooldown (180 s).

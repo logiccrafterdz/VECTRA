@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1060 410" width="100%" height="auto" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif">
   <rect width="1060" height="410" rx="10" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5"/>
   <text x="30" y="36" font-size="16" font-weight="700" fill="#0f172a">VECTRA DETERMINISTIC 7-STAGE TICK PROCESSING PIPELINE</text>
-  <text x="30" y="56" font-size="12" fill="#475569">Strict causality (no future look-ahead) | Fixed-point PriceFixed (10^-8) | Bitwise reproducible FNV-1a 64-bit digest</text>
+  <text x="30" y="56" font-size="12" fill="#475569">Strict causality (no future look-ahead) | Fixed-point PriceFixed (10^-8) | Reproducible FNV-1a 64-bit run digest (per toolchain)</text>
 
   <!-- Row 1: Stages 1 to 4 -->
   <!-- Stage 1 -->
@@ -23,7 +23,7 @@
   <text x="297" y="124" font-size="11" fill="#334155">• Provider windows: 120s / 240s / 720s</text>
   <text x="297" y="142" font-size="11" fill="#334155">• Inter &amp; intra-window deceleration</text>
   <text x="297" y="160" font-size="11" fill="#334155">• Welford volatility &amp; sign persistence</text>
-  <text x="297" y="178" font-size="11" fill="#1d4ed8">• 16-block regime path efficiency</text>
+  <text x="297" y="178" font-size="11" fill="#1d4ed8">• Block (2-16) regime path efficiency</text>
 
   <line x1="520" y1="142" x2="545" y2="142" stroke="#2563eb" stroke-width="2"/>
   <polygon points="545,142 537,137 537,147" fill="#2563eb"/>
@@ -57,10 +57,10 @@
   <!-- Stage 5 -->
   <rect x="30" y="252" width="305" height="130" rx="8" fill="#ffffff" stroke="#94a3b8" stroke-width="1.5"/>
   <rect x="30" y="252" width="305" height="28" rx="8" fill="#fef3c7"/>
-  <text x="42" y="271" font-size="12" font-weight="700" fill="#78350f">5. Twelve-Gate Pre-Trade Risk Engine</text>
+  <text x="42" y="271" font-size="12" font-weight="700" fill="#78350f">5. Multi-Gate Pre-Trade Risk Engine</text>
   <text x="42" y="296" font-size="11" fill="#334155">• KillSwitch, DataHealth &amp; StaleGate (15s)</text>
   <text x="42" y="314" font-size="11" fill="#334155">• Wall-clock Cooldown timer (180s between entries)</text>
-  <text x="42" y="332" font-size="11" fill="#334155">• Full Round-Trip Cost Edge: Move - [Spread + 2*(Comm+Slip)]</text>
+  <text x="42" y="332" font-size="11" fill="#334155">• Round-trip edge: Move - [Spread + 2(Comm+Slip)]</text>
   <text x="42" y="350" font-size="11" fill="#b45309">• Position, Exposure, Open Order &amp; Daily Loss caps</text>
 
   <line x1="335" y1="317" x2="365" y2="317" stroke="#2563eb" stroke-width="2"/>
@@ -85,5 +85,5 @@
   <text x="732" y="296" font-size="11" fill="#334155">• Forward evaluation at t + 180s vs. Naive Baseline</text>
   <text x="732" y="314" font-size="11" fill="#334155">• Autocorrelation-free Non-Overlapping Block t-stats</text>
   <text x="732" y="332" font-size="11" fill="#334155">• 5-Bin Score Reliability &amp; Brier calibration table</text>
-  <text x="732" y="350" font-size="11" fill="#6d28d9">• Sub-microsecond latency &amp; FNV-1a 64-bit digest</text>
+  <text x="732" y="350" font-size="11" fill="#6d28d9">• Per-stage latency (~1.4 us/tick) &amp; run digest</text>
 </svg>
