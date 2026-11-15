@@ -13,6 +13,7 @@
 #pragma once
 
 #include <cstdint>
+#include <deque>
 #include <istream>
 #include <map>
 #include <string>
@@ -45,6 +46,38 @@ struct ReplayConfig {
 
   std::size_t min_latency_samples = 30;
   std::size_t max_equity_curve_points = 1000;
+
+  // Position lifecycle: when > 0, automatically submits a market exit order to
+  // flatten an open position once this many valid events have elapsed since the
+  // position was opened/flipped, or when per-unit executable move hits stop/TP.
+  // 0 = disabled (legacy behaviour).
+  std::size_t hold_horizon_events = 0;
+  std::int64_t hold_horizon_ns = 0;
+  std::int64_t eval_horizon_ns = 0;
+  double stop_loss_price = 0.0;
+  double take_profit_price = 0.0;
+
+  // Memory control: when false, SignalRecord / DecisionRecord vectors are not
+  // retained in memory (digest is still computed on the fly).
+  bool retain_tick_records = true;
+};
+
+struct SignalHorizonStats {
+  std::size_t evaluated = 0;
+  std::size_t hits = 0;
+  std::size_t flats = 0;
+  double sum_signed_mid_move = 0.0;
+  double sum_net_spread_move = 0.0;
+
+  double hit_rate() const {
+    return evaluated > 0 ? static_cast<double>(hits) / static_cast<double>(evaluated) : 0.0;
+  }
+  double mean_signed_mid_move() const {
+    return evaluated > 0 ? sum_signed_mid_move / static_cast<double>(evaluated) : 0.0;
+  }
+  double mean_net_spread_move() const {
+    return evaluated > 0 ? sum_net_spread_move / static_cast<double>(evaluated) : 0.0;
+  }
 };
 
 struct SignalRecord {
@@ -92,6 +125,9 @@ struct ReplayStats {
   std::size_t signals = 0;
   std::map<std::string, int> signal_kinds;
   std::map<std::string, int> rejection_reasons;
+  SignalHorizonStats forward_all;
+  SignalHorizonStats forward_continuation;
+  SignalHorizonStats forward_reversal;
 
   // --- decisions ---
   std::size_t decisions_allowed = 0;
@@ -107,6 +143,9 @@ struct ReplayStats {
   std::size_t order_transitions_invalid = 0;
   std::size_t fills = 0;
   std::size_t partial_fills = 0;
+  std::size_t horizon_exits_submitted = 0;
+  std::size_t stop_loss_exits_submitted = 0;
+  std::size_t take_profit_exits_submitted = 0;
 
   // --- performance (P&L in quote currency) ---
   double initial_equity = 0.0;
@@ -158,9 +197,21 @@ class ReplayEngine {
   const risk::RiskEngine& risk() const { return risk_; }
 
  private:
+  struct PendingSignalEval {
+    std::uint64_t target_event_index = 0;
+    std::int64_t target_time_ns = 0;
+    prediction::SignalKind kind = prediction::SignalKind::Neutral;
+    double direction = 0.0;
+    double entry_mid = 0.0;
+    double entry_bid = 0.0;
+    double entry_ask = 0.0;
+  };
+
   void handle_order_events(std::int64_t now_ns, market::Price bid, market::Price ask);
   void apply_local_fill(const execution::OrderEvent& event, double half_spread_price);
   void update_equity(market::Price bid, market::Price ask, std::int64_t now_ns);
+  void evaluate_matured_signals(std::uint64_t current_event_index, std::int64_t current_time_ns,
+                                double mid, double bid, double ask);
   void finalize();
 
   ReplayConfig config_;
@@ -189,6 +240,11 @@ class ReplayEngine {
   std::vector<DecisionRecord> decision_records_;
   std::vector<execution::OrderEvent> order_events_;
   std::vector<std::pair<std::int64_t, double>> equity_curve_;
+  std::deque<PendingSignalEval> pending_signal_evals_;
+
+  std::size_t position_held_events_ = 0;
+  std::int64_t position_opened_time_ns_ = 0;
+  std::uint64_t signal_digest_ = 14695981039346656037ULL;
 
   telemetry::LatencyRecorder event_latency_;
   telemetry::LatencyRecorder signal_latency_;

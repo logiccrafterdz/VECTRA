@@ -209,6 +209,48 @@ VT_TEST(Behavior, WideSpreadIsFlagged) {
   VT_ASSERT_TRUE(engine.features().flags.wide_spread);
 }
 
+VT_TEST(Behavior, WallClockTimeWindowsAreInvariantToTickRate) {
+  BehaviorEngineConfig config = small_config();
+  config.window_short_ns = 1'000'000'000LL;  // 1 s
+  config.window_mid_ns = 2'000'000'000LL;    // 2 s
+  config.window_long_ns = 3'000'000'000LL;   // 3 s
+  config.min_vol_samples = 4;
+
+  BehaviorEngine engine(config);
+  // 40 ticks spaced 100 ms apart (total 4.0 s), rising 0.0001 per tick.
+  for (std::size_t i = 0; i <= 40; ++i) {
+    engine.update(make_quote(1.1000 + 0.0001 * static_cast<double>(i), 0.00010,
+                             static_cast<std::int64_t>(i + 1) * 100'000'000LL,
+                             static_cast<std::uint64_t>(i + 1)));
+  }
+  const auto& f = engine.features();
+  VT_ASSERT_TRUE(f.valid);
+  // 1 s at 100 ms/tick is 10 events back: mid moved from 1.1030 to 1.1040.
+  VT_ASSERT_EQ(f.short_window_events, std::size_t{10});
+  VT_ASSERT_NEAR(f.disp_short, std::log(1.1040 / 1.1030), 1e-12);
+  VT_ASSERT_NEAR(f.regime_efficiency, 1.0, 1e-9);
+}
+
+VT_TEST(Behavior, RegimeEfficiencyDistinguishesTrendFromChop) {
+  BehaviorEngineConfig config = small_config();
+  config.window_short_events = 4;
+  config.window_mid_events = 8;
+  config.window_long_events = 16;
+
+  BehaviorEngine chop_engine(config);
+  // Alternating 4-tick blocks (+0.0004 over 4 ticks, then -0.0004 over 4 ticks).
+  double mid = 1.1000;
+  for (std::size_t i = 0; i <= 20; ++i) {
+    const std::size_t block = (i / 4) % 2;
+    mid += (block == 0 ? 0.0001 : -0.0001);
+    chop_engine.update(make_quote(mid, 0.00010,
+                                  static_cast<std::int64_t>(i + 1) * 100'000'000LL,
+                                  static_cast<std::uint64_t>(i + 1)));
+  }
+  VT_ASSERT_TRUE(chop_engine.features().valid);
+  VT_ASSERT_TRUE(chop_engine.features().regime_efficiency < 0.35);
+}
+
 // ---------------------------------------------------------------------------
 // Exhaustion score edge cases
 // ---------------------------------------------------------------------------

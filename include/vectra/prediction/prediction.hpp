@@ -50,6 +50,11 @@ struct PredictionConfig {
   // Volatility samples at (or above) which the sample-size factor of the
   // confidence score reaches 1.0. UNCALIBRATED starting value.
   std::size_t full_confidence_samples = 64;
+  bool require_mid_confirmation = false;
+  bool require_long_confirmation = false;
+  double min_continuation_efficiency = 0.0;
+  double max_reversal_efficiency = 1.0;
+  double max_continuation_extension_z = 0.0;
 
   behavior::ExhaustionConfig exhaustion;
 };

@@ -119,12 +119,21 @@ Prediction ScoringPredictor::predict(const behavior::BehaviorFeatures& f) const 
   bool rule_fired = false;
   if (direction_sign != 0.0 && abs_z >= config_.min_extension_z) {
     if (exhaustion.score >= config_.reversal_exhaustion_threshold &&
-        f.persistence <= config_.max_persistence_for_reversal) {
+        f.persistence <= config_.max_persistence_for_reversal &&
+        f.regime_efficiency <= config_.max_reversal_efficiency) {
       p.kind = SignalKind::Reversal;
       p.direction = -direction_sign;
       rule_fired = true;
     } else if (exhaustion.score <= config_.continuation_exhaustion_threshold &&
-               f.persistence >= config_.min_persistence) {
+               f.persistence >= config_.min_persistence &&
+               (config_.max_continuation_extension_z <= 0.0 ||
+                abs_z <= config_.max_continuation_extension_z) &&
+               f.regime_efficiency >= config_.min_continuation_efficiency &&
+               (!config_.require_mid_confirmation ||
+                (f.disp_short * (f.disp_mid - f.disp_short) > 0.0)) &&
+               (!config_.require_long_confirmation ||
+                (f.disp_short * f.disp_long > 0.0 &&
+                 f.disp_short * (f.disp_long - f.disp_mid) > 0.0))) {
       p.kind = SignalKind::Continuation;
       p.direction = direction_sign;
       rule_fired = true;

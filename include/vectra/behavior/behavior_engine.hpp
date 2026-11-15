@@ -33,6 +33,17 @@ struct BehaviorEngineConfig {
   double min_mid_price = 1e-9;              // non-positive midpoint guard
   double spread_warn_ratio = 5e-4;          // spread/mid above this flags wide spread
   std::size_t min_persistence_samples = 4;  // returns needed for a persistence estimate
+
+  // Optional wall-clock observation windows (nanoseconds on source_time_ns).
+  // When window_short_ns > 0, displacements are anchored to provider timestamps
+  // instead of fixed event counts. 0 = disabled (legacy event counts).
+  std::int64_t window_short_ns = 0;
+  std::int64_t window_mid_ns = 0;
+  std::int64_t window_long_ns = 0;
+
+  // Lag in events used for deceleration when event-counted windows are active.
+  // 1 = legacy single-tick difference; >1 = scale-invariant multi-tick lag.
+  std::size_t decel_lag_events = 1;
 };
 
 // Non-fatal data-quality annotations produced by the engine.
@@ -87,6 +98,9 @@ struct BehaviorFeatures {
 
   double volatility = 0.0;       // per-event log-return sample std
   double z_short = 0.0;          // disp_short / (volatility * sqrt(short window))
+  double z_mid = 0.0;            // disp_mid / (volatility * sqrt(mid window))
+  double z_long = 0.0;           // disp_long / (volatility * sqrt(long window))
+  double regime_efficiency = 0.0;// |disp_long| / sum(|sub-block displacements|) in [0,1]
   double deceleration = 0.0;     // slowdown along the move direction, clamped [-1,1]
 
   std::size_t short_window_events = 0;
@@ -117,11 +131,13 @@ class BehaviorEngine {
 
  private:
   double mid_at(std::size_t back) const;  // 0 = current event
+  std::size_t back_for_time(std::int64_t target_time_ns) const;
 
   BehaviorEngineConfig config_;
   std::size_t max_window_ = 0;
 
   std::deque<double> mids_;        // bounded to the longest window + slack
+  std::deque<std::int64_t> times_; // provider timestamps parallel to mids_
   RollingWindow vol_window_{1};    // consecutive-event log returns
   std::deque<double> recent_returns_;  // bounded to persistence window
   double prev_mid_ = 0.0;

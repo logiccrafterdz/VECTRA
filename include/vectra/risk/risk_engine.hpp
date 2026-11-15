@@ -24,6 +24,7 @@ struct RiskConfig {
   double commission = 0.00001;         // UNCALIBRATED: per-side cost, price units
   double slippage = 0.00002;           // UNCALIBRATED: per-side cost, price units
   double max_spread = 0.00040;         // reject quotes wider than this
+  bool round_trip_cost = false;        // when true, edge gate deducts entry + exit cost
 
   // --- Position and exposure limits ---
   double order_units = 5000.0;    // base order size when limits allow
@@ -37,6 +38,8 @@ struct RiskConfig {
   // --- Order limits ---
   int max_open_orders = 3;
   int max_orders_per_day = 40;
+  std::size_t cooldown_events = 0;  // min valid events between order submissions (0 = off)
+  std::int64_t cooldown_ns = 0;     // min provider-time ns between order submissions (0 = off)
 
   // --- Data health gate ---
   std::size_t data_health_window = 200;   // rolling window of validity flags
@@ -60,6 +63,7 @@ enum class RejectReason {
   DailyLossLimit,
   MaxOpenOrders,
   MaxOrdersPerDay,
+  Cooldown,
 };
 
 const char* to_string(RejectReason r);
@@ -122,6 +126,9 @@ class RiskEngine {
   std::size_t data_window_valid_ = 0;
   bool has_valid_event_ = false;
   std::int64_t last_valid_event_ns_ = 0;
+  bool has_placed_order_ = false;
+  std::size_t valid_events_since_last_order_ = 0;
+  std::int64_t last_order_time_ns_ = 0;
 };
 
 }  // namespace vectra::risk

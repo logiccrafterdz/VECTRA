@@ -30,6 +30,7 @@ const char* to_string(RejectReason r) {
     case RejectReason::DailyLossLimit:     return "DailyLossLimit";
     case RejectReason::MaxOpenOrders:      return "MaxOpenOrders";
     case RejectReason::MaxOrdersPerDay:    return "MaxOrdersPerDay";
+    case RejectReason::Cooldown:           return "Cooldown";
   }
   return "Unknown";
 }
@@ -78,12 +79,20 @@ void RiskEngine::record_data_point(bool valid_event, std::int64_t now_ns) {
   if (valid_event) {
     has_valid_event_ = true;
     last_valid_event_ns_ = now_ns;
+    if (has_placed_order_) {
+      ++valid_events_since_last_order_;
+    }
   }
 }
 
 void RiskEngine::record_position(double units) { position_units_ = units; }
 void RiskEngine::record_open_orders(int count) { open_orders_ = count; }
-void RiskEngine::record_order_placed() { ++orders_today_; }
+void RiskEngine::record_order_placed() {
+  ++orders_today_;
+  has_placed_order_ = true;
+  valid_events_since_last_order_ = 0;
+  last_order_time_ns_ = last_valid_event_ns_;
+}
 
 void RiskEngine::record_realized_pnl(double pnl_delta) { daily_pnl_ += pnl_delta; }
 
@@ -146,8 +155,10 @@ Decision RiskEngine::evaluate(const prediction::Prediction& p,
                       std::to_string(config_.max_spread));
   }
 
-  // Cost model (per side): half the spread actually crossed + commission + slippage.
-  const double cost = spread_price * 0.5 + config_.commission + config_.slippage;
+  // Cost model: half the spread actually crossed + commission + slippage per
+  // side, or full round-trip when round_trip_cost is enabled.
+  const double one_way_cost = spread_price * 0.5 + config_.commission + config_.slippage;
+  const double cost = config_.round_trip_cost ? (2.0 * one_way_cost) : one_way_cost;
   // Convert the log-return expectation into a price move (expm1 is exact for
   // the log return; the linear approximation would drift on larger moves).
   const double expected_move = std::expm1(std::fabs(p.expected_move_log)) * mid;
@@ -178,6 +189,21 @@ Decision RiskEngine::evaluate(const prediction::Prediction& p,
     d.action = DecisionAction::Reject;
     d.reason = RejectReason::MaxOrdersPerDay;
     d.detail = "orders today " + std::to_string(orders_today_) + " at limit";
+    return d;
+  }
+  if (config_.cooldown_events > 0 && has_placed_order_ &&
+      valid_events_since_last_order_ < config_.cooldown_events) {
+    d.action = DecisionAction::Reject;
+    d.reason = RejectReason::Cooldown;
+    d.detail = "cooldown active (" + std::to_string(valid_events_since_last_order_) + "/" +
+               std::to_string(config_.cooldown_events) + " events)";
+    return d;
+  }
+  if (config_.cooldown_ns > 0 && has_placed_order_ &&
+      (now_ns - last_order_time_ns_) < config_.cooldown_ns) {
+    d.action = DecisionAction::Reject;
+    d.reason = RejectReason::Cooldown;
+    d.detail = "time cooldown active";
     return d;
   }
 

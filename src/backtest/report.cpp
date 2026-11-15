@@ -125,7 +125,28 @@ void write_markdown_report(std::ostream& out, const ReplayEngine& engine,
                    static_cast<double>(s.predictions_total))
         << " |\n";
   }
-  out << "\nScores are continuity/reversal **scores** in [0,1], produced by a "
+  out << "\n";
+  if (s.forward_all.evaluated > 0) {
+    out << "### Causal forward-return evaluation (horizon = " << cfg.prediction.horizon_events
+        << " valid events)\n\n";
+    out << "| Signal kind | Evaluated | Hit rate (mid) | Mean signed mid move | Mean spread-crossed move |\n"
+           "|---|---|---|---|---|\n";
+    const auto write_fwd_row = [&out](const char* label, const SignalHorizonStats& fs) {
+      out << "| " << label << " | " << fs.evaluated << " | ";
+      if (fs.evaluated == 0) {
+        out << "n/a | n/a | n/a |\n";
+        return;
+      }
+      out << percent(100.0 * fs.hit_rate()) << " | "
+          << number(fs.mean_signed_mid_move(), 6) << " | "
+          << number(fs.mean_net_spread_move(), 6) << " |\n";
+    };
+    write_fwd_row("Continuation", s.forward_continuation);
+    write_fwd_row("Reversal", s.forward_reversal);
+    write_fwd_row("All usable signals", s.forward_all);
+    out << "\n";
+  }
+  out << "Scores are continuity/reversal **scores** in [0,1], produced by a "
          "fixed formula with uncalibrated thresholds (see "
          "docs/mathematical_model.md). They have not been calibrated against "
          "realized outcomes and must not be read as probabilities.\n\n";
@@ -156,6 +177,15 @@ void write_markdown_report(std::ostream& out, const ReplayEngine& engine,
   out << "| Duplicate submissions blocked | " << s.orders_duplicate << " |\n";
   out << "| Fill events | " << s.fills << " |\n";
   out << "| of which partial fills | " << s.partial_fills << " |\n";
+  if (s.horizon_exits_submitted > 0) {
+    out << "| Horizon exits submitted | " << s.horizon_exits_submitted << " |\n";
+  }
+  if (s.stop_loss_exits_submitted > 0) {
+    out << "| Stop-loss exits submitted | " << s.stop_loss_exits_submitted << " |\n";
+  }
+  if (s.take_profit_exits_submitted > 0) {
+    out << "| Take-profit exits submitted | " << s.take_profit_exits_submitted << " |\n";
+  }
   out << "| Reconciliation | "
       << (s.reconciliation.matched ? "matched" : "MISMATCH")
       << " (" << s.reconciliation.detail << ") |\n";

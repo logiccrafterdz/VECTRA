@@ -287,3 +287,66 @@ VT_TEST(Report, MarksUnavailableLatencyAsNotApplicable) {
   const std::string text = report.str();
   VT_ASSERT_TRUE(text.find("n/a (only 0 samples") != std::string::npos);
 }
+
+VT_TEST(Replay, ForwardSignalStatsAreEvaluatedCausally) {
+  ReplayEngine engine(test_config());
+  std::istringstream input(to_csv(trending_walk(400)));
+  const ReplayStats stats = engine.run(input, "fwd-eval");
+
+  VT_ASSERT_TRUE(stats.signals > 0);
+  VT_ASSERT_TRUE(stats.forward_all.evaluated > 0);
+  VT_ASSERT_TRUE(stats.forward_all.evaluated <= stats.signals);
+  VT_ASSERT_EQ(stats.forward_all.evaluated,
+               stats.forward_continuation.evaluated + stats.forward_reversal.evaluated);
+  // In a monotonic uptrend, continuation signals have a positive mid move.
+  VT_ASSERT_TRUE(stats.forward_continuation.mean_signed_mid_move() > 0.0);
+}
+
+VT_TEST(Replay, HorizonExitClosesOpenPositionAfterConfiguredEvents) {
+  ReplayConfig config = test_config();
+  config.hold_horizon_events = 8;
+  config.risk.cooldown_events = 50;  // prevent immediate re-entry so exit is isolated
+  ReplayEngine engine(config);
+  std::istringstream input(to_csv(trending_walk(400)));
+  const ReplayStats stats = engine.run(input, "horizon-exit");
+
+  VT_ASSERT_TRUE(stats.horizon_exits_submitted > 0);
+  VT_ASSERT_TRUE(stats.realized_pnl != 0.0);
+  VT_ASSERT_TRUE(stats.reconciliation.matched);
+}
+
+VT_TEST(Replay, CooldownPreventsOrderStackingInReplay) {
+  ReplayConfig no_cd = test_config();
+  ReplayEngine engine_no_cd(no_cd);
+  std::istringstream in1(to_csv(trending_walk(150)));
+  const ReplayStats stats_no_cd = engine_no_cd.run(in1, "no-cd");
+
+  ReplayConfig with_cd = test_config();
+  with_cd.risk.cooldown_events = 50;
+  ReplayEngine engine_cd(with_cd);
+  std::istringstream in2(to_csv(trending_walk(150)));
+  const ReplayStats stats_cd = engine_cd.run(in2, "with-cd");
+
+  VT_ASSERT_TRUE(stats_cd.orders_submitted < stats_no_cd.orders_submitted);
+  VT_ASSERT_TRUE(stats_cd.decision_reasons.count("Cooldown") > 0);
+}
+
+VT_TEST(Replay, StopLossAndTakeProfitExitsAreTriggered) {
+  // Take-profit on an uptrend.
+  ReplayConfig tp_cfg = test_config();
+  tp_cfg.take_profit_price = 0.0002;
+  tp_cfg.risk.cooldown_events = 100;
+  ReplayEngine tp_engine(tp_cfg);
+  std::istringstream tp_in(to_csv(trending_walk(300)));
+  const ReplayStats tp_stats = tp_engine.run(tp_in, "tp");
+  VT_ASSERT_TRUE(tp_stats.take_profit_exits_submitted > 0);
+
+  // Stop-loss on the v_walk reversal.
+  ReplayConfig sl_cfg = test_config();
+  sl_cfg.stop_loss_price = 0.0003;
+  sl_cfg.risk.cooldown_events = 200;
+  ReplayEngine sl_engine(sl_cfg);
+  std::istringstream sl_in(to_csv(v_walk()));
+  const ReplayStats sl_stats = sl_engine.run(sl_in, "sl");
+  VT_ASSERT_TRUE(sl_stats.stop_loss_exits_submitted > 0);
+}

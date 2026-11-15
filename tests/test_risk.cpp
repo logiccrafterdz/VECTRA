@@ -193,3 +193,44 @@ VT_TEST(Risk, DataHealthStartsReliable) {
   RiskEngine risk{RiskConfig{}};
   VT_ASSERT_TRUE(risk.data_reliable());
 }
+
+VT_TEST(Risk, RoundTripCostDoublesEstimatedCost) {
+  RiskConfig one_way_cfg;
+  one_way_cfg.round_trip_cost = false;
+  RiskEngine one_way{one_way_cfg};
+
+  RiskConfig rt_cfg;
+  rt_cfg.round_trip_cost = true;
+  RiskEngine rt{rt_cfg};
+
+  const auto quote = make_quote(1.10, 0.00010, 1);
+  const Decision d1 = one_way.evaluate(good_signal(0.002), quote, 1);
+  const Decision d2 = rt.evaluate(good_signal(0.002), quote, 1);
+
+  VT_ASSERT_NEAR(d2.cost, 2.0 * d1.cost, 1e-12);
+  VT_ASSERT_NEAR(d1.edge - d2.edge, d1.cost, 1e-12);
+}
+
+VT_TEST(Risk, CooldownBlocksConsecutiveOrdersUntilElapsed) {
+  RiskConfig config;
+  config.cooldown_events = 3;
+  RiskEngine risk{config};
+
+  risk.record_data_point(true, 1'000'000'000);
+  const Decision first = risk.evaluate(good_signal(), make_quote(1.10, 0.00010, 1), 1'000'000'000);
+  VT_ASSERT_EQ(first.action, DecisionAction::Allow);
+  risk.record_order_placed();
+
+  // Event +1 and +2: blocked by cooldown.
+  risk.record_data_point(true, 1'100'000'000);
+  VT_ASSERT_EQ(risk.evaluate(good_signal(), make_quote(1.10, 0.00010, 2), 1'100'000'000).reason,
+               RejectReason::Cooldown);
+  risk.record_data_point(true, 1'200'000'000);
+  VT_ASSERT_EQ(risk.evaluate(good_signal(), make_quote(1.10, 0.00010, 3), 1'200'000'000).reason,
+               RejectReason::Cooldown);
+
+  // Event +3: cooldown elapsed => allowed again.
+  risk.record_data_point(true, 1'300'000'000);
+  VT_ASSERT_EQ(risk.evaluate(good_signal(), make_quote(1.10, 0.00010, 4), 1'300'000'000).action,
+               DecisionAction::Allow);
+}

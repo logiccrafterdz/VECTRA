@@ -182,3 +182,20 @@ VT_TEST(Prediction, ExpectedMoveIsCapped) {
   const Prediction prediction = predictor.predict(features);
   VT_ASSERT_TRUE(std::fabs(prediction.expected_move_log) <= 0.001 + 1e-15);
 }
+
+VT_TEST(Prediction, RegimeEfficiencyGatesContinuationInChop) {
+  PredictionConfig config;
+  config.min_continuation_efficiency = 0.50;
+  ScoringPredictor predictor{config};
+
+  BehaviorFeatures chop = base_features();
+  chop.regime_efficiency = 0.20;
+  const Prediction blocked = predictor.predict(chop);
+  VT_ASSERT_EQ(blocked.kind, SignalKind::Neutral);
+  VT_ASSERT_EQ(blocked.rejection, RejectionReason::NoRuleMatch);
+
+  BehaviorFeatures trend = base_features();
+  trend.regime_efficiency = 0.75;
+  const Prediction allowed = predictor.predict(trend);
+  VT_ASSERT_EQ(allowed.kind, SignalKind::Continuation);
+}

@@ -103,8 +103,14 @@ void ReplayEngine::apply_local_fill(const execution::OrderEvent& event,
   // is reported separately and never added twice.
   stats_.spread_cost_total += event.units * half_spread_price;
 
+  const double position_before = local_account_.position;
   const double realized_before = local_account_.realized_pnl;
   apply_fill_to(local_account_, event.side, event.units, event.price, commission);
+  if (local_account_.position == 0.0 || position_before == 0.0 ||
+      ((position_before > 0.0) != (local_account_.position > 0.0))) {
+    position_held_events_ = 0;
+    position_opened_time_ns_ = event.time_ns;
+  }
   // Feed the realized P&L of this fill back into the risk engine so that the
   // daily-loss gate sees closing P&L (previously it never did during replay).
   const double realized_delta = local_account_.realized_pnl - realized_before;
@@ -212,6 +218,41 @@ void ReplayEngine::update_equity(market::Price bid, market::Price ask,
   ++equity_samples_;
 }
 
+void ReplayEngine::evaluate_matured_signals(std::uint64_t current_event_index,
+                                            std::int64_t current_time_ns, double mid,
+                                            double bid, double ask) {
+  const auto accumulate = [](SignalHorizonStats& s, double signed_mid, double net_spread) {
+    ++s.evaluated;
+    if (signed_mid > 0.0) {
+      ++s.hits;
+    } else if (signed_mid == 0.0) {
+      ++s.flats;
+    }
+    s.sum_signed_mid_move += signed_mid;
+    s.sum_net_spread_move += net_spread;
+  };
+
+  const bool use_time_horizon = config_.eval_horizon_ns > 0;
+  while (!pending_signal_evals_.empty() &&
+         (use_time_horizon ? (current_time_ns >= pending_signal_evals_.front().target_time_ns)
+                           : (pending_signal_evals_.front().target_event_index <=
+                              current_event_index))) {
+    const PendingSignalEval item = pending_signal_evals_.front();
+    pending_signal_evals_.pop_front();
+
+    const double signed_mid = item.direction * (mid - item.entry_mid);
+    const double net_spread =
+        item.direction >= 0.0 ? (bid - item.entry_ask) : (item.entry_bid - ask);
+
+    accumulate(stats_.forward_all, signed_mid, net_spread);
+    if (item.kind == prediction::SignalKind::Continuation) {
+      accumulate(stats_.forward_continuation, signed_mid, net_spread);
+    } else if (item.kind == prediction::SignalKind::Reversal) {
+      accumulate(stats_.forward_reversal, signed_mid, net_spread);
+    }
+  }
+}
+
 ReplayStats ReplayEngine::run(std::istream& input, const std::string& source_name) {
   (void)source_name;  // surfaced by the caller/report, not needed by the loop
   stats_.initial_equity = config_.initial_capital;
@@ -260,6 +301,62 @@ ReplayStats ReplayEngine::run(std::istream& input, const std::string& source_nam
         broker_.on_market(event);
         handle_order_events(event.source_time_ns, event.bid, event.ask);
 
+        // --- 1b. position lifecycle: SL / TP / horizon exit ---------------
+        bool lifecycle_exit_triggered = false;
+        if (local_account_.position != 0.0) {
+          ++position_held_events_;
+          if (count_open_orders(broker_.orders()) == 0) {
+            const double bid_p = market::price_to_double(event.bid);
+            const double ask_p = market::price_to_double(event.ask);
+            const double move_per_unit = local_account_.position > 0.0
+                                             ? (bid_p - local_account_.avg_price)
+                                             : (local_account_.avg_price - ask_p);
+            const bool sl_hit =
+                config_.stop_loss_price > 0.0 && move_per_unit <= -config_.stop_loss_price;
+            const bool tp_hit =
+                config_.take_profit_price > 0.0 && move_per_unit >= config_.take_profit_price;
+            const bool horizon_events_hit =
+                config_.hold_horizon_events > 0 &&
+                position_held_events_ >= config_.hold_horizon_events;
+            const bool horizon_time_hit =
+                config_.hold_horizon_ns > 0 && position_opened_time_ns_ > 0 &&
+                (event.source_time_ns - position_opened_time_ns_) >= config_.hold_horizon_ns;
+            const bool horizon_hit = horizon_events_hit || horizon_time_hit;
+
+            if (sl_hit || tp_hit || horizon_hit) {
+              ++request_counter_;
+              execution::OrderRequest exit_req;
+              exit_req.client_order_id = "EXIT-" + std::to_string(stats_.events_valid) + "-" +
+                                         std::to_string(request_counter_);
+              exit_req.symbol = event.symbol;
+              exit_req.side = local_account_.position > 0.0 ? execution::Side::Sell
+                                                            : execution::Side::Buy;
+              exit_req.units = std::fabs(local_account_.position);
+              exit_req.type = execution::OrderType::Market;
+              exit_req.created_ns = event.source_time_ns;
+
+              if (sl_hit) {
+                ++stats_.stop_loss_exits_submitted;
+              } else if (tp_hit) {
+                ++stats_.take_profit_exits_submitted;
+              } else {
+                ++stats_.horizon_exits_submitted;
+              }
+              ++stats_.orders_submitted;
+              const auto submitted = broker_.submit(exit_req, event.source_time_ns);
+              if (submitted.has_value()) {
+                ++stats_.orders_accepted;
+                submit_times_[submitted->order_id] = event.source_time_ns;
+              }
+              handle_order_events(event.source_time_ns, event.bid, event.ask);
+              position_held_events_ = 0;
+              lifecycle_exit_triggered = true;
+            }
+          }
+        } else {
+          position_held_events_ = 0;
+        }
+
         // --- 2. behavioral features ---------------------------------------
         {
           telemetry::Stopwatch timer;
@@ -267,6 +364,9 @@ ReplayStats ReplayEngine::run(std::istream& input, const std::string& source_nam
           event_latency_.record(timer.elapsed_ns());
         }
         const behavior::BehaviorFeatures& features = behavior_.features();
+        evaluate_matured_signals(features.event_index, event.source_time_ns, features.mid,
+                                 market::price_to_double(event.bid),
+                                 market::price_to_double(event.ask));
 
         // --- 3. prediction -------------------------------------------------
         prediction::Prediction prediction;
@@ -276,23 +376,32 @@ ReplayStats ReplayEngine::run(std::istream& input, const std::string& source_nam
           signal_latency_.record(timer.elapsed_ns());
         }
 
-        SignalRecord signal_record;
-        signal_record.time_ns = event.source_time_ns;
-        signal_record.event_index = prediction.event_index;
-        signal_record.kind = prediction.kind;
-        signal_record.rejection = prediction.rejection;
-        signal_record.valid = prediction.valid;
-        signal_record.exhaustion = prediction.exhaustion;
-        signal_record.continuation_score = prediction.continuation_score;
-        signal_record.reversal_score = prediction.reversal_score;
-        signal_record.confidence = prediction.confidence;
-        signal_record.expected_move_log = prediction.expected_move_log;
-        signal_record.direction = prediction.direction;
-        signal_record.z_short = features.z_short;
-        signal_record.persistence = features.persistence;
-        signal_record.volatility = features.volatility;
-        signal_record.quality_flags = behavior::describe(features.flags);
-        signal_records_.push_back(signal_record);
+        if (config_.retain_tick_records) {
+          SignalRecord signal_record;
+          signal_record.time_ns = event.source_time_ns;
+          signal_record.event_index = prediction.event_index;
+          signal_record.kind = prediction.kind;
+          signal_record.rejection = prediction.rejection;
+          signal_record.valid = prediction.valid;
+          signal_record.exhaustion = prediction.exhaustion;
+          signal_record.continuation_score = prediction.continuation_score;
+          signal_record.reversal_score = prediction.reversal_score;
+          signal_record.confidence = prediction.confidence;
+          signal_record.expected_move_log = prediction.expected_move_log;
+          signal_record.direction = prediction.direction;
+          signal_record.z_short = features.z_short;
+          signal_record.persistence = features.persistence;
+          signal_record.volatility = features.volatility;
+          signal_record.quality_flags = behavior::describe(features.flags);
+          signal_records_.push_back(signal_record);
+        } else {
+          hash_u64(signal_digest_, static_cast<std::uint64_t>(event.source_time_ns));
+          hash_u64(signal_digest_, static_cast<std::uint64_t>(static_cast<int>(prediction.kind)));
+          hash_u64(signal_digest_,
+                   static_cast<std::uint64_t>(static_cast<int>(prediction.rejection)));
+          signal_digest_ = hash_double(signal_digest_, prediction.exhaustion);
+          signal_digest_ = hash_double(signal_digest_, prediction.expected_move_log);
+        }
 
         ++stats_.predictions_total;
         ++stats_.signal_kinds[ prediction::to_string(prediction.kind)];
@@ -300,6 +409,17 @@ ReplayStats ReplayEngine::run(std::istream& input, const std::string& source_nam
         if (prediction.has_signal()) {
           ++stats_.signals;
           ++stats_.predictions_usable;
+          const std::size_t horizon =
+              prediction.horizon_events > 0 ? prediction.horizon_events : 1;
+          pending_signal_evals_.push_back(PendingSignalEval{
+              features.event_index + horizon,
+              event.source_time_ns + config_.eval_horizon_ns,
+              prediction.kind,
+              prediction.direction >= 0.0 ? 1.0 : -1.0,
+              features.mid,
+              market::price_to_double(event.bid),
+              market::price_to_double(event.ask),
+          });
         }
 
         // --- 4. decision ---------------------------------------------------
@@ -310,16 +430,23 @@ ReplayStats ReplayEngine::run(std::istream& input, const std::string& source_nam
           decision_latency_.record(timer.elapsed_ns());
         }
 
-        DecisionRecord decision_record;
-        decision_record.time_ns = event.source_time_ns;
-        decision_record.action = decision.action;
-        decision_record.reason = decision.reason;
-        decision_record.signal = decision.signal;
-        decision_record.edge = decision.edge;
-        decision_record.cost = decision.cost;
-        decision_record.expected_move = decision.expected_move;
-        decision_record.size_units = decision.size_units;
-        decision_records_.push_back(decision_record);
+        if (config_.retain_tick_records) {
+          DecisionRecord decision_record;
+          decision_record.time_ns = event.source_time_ns;
+          decision_record.action = decision.action;
+          decision_record.reason = decision.reason;
+          decision_record.signal = decision.signal;
+          decision_record.edge = decision.edge;
+          decision_record.cost = decision.cost;
+          decision_record.expected_move = decision.expected_move;
+          decision_record.size_units = decision.size_units;
+          decision_records_.push_back(decision_record);
+        } else {
+          hash_u64(signal_digest_, static_cast<std::uint64_t>(static_cast<int>(decision.action)));
+          hash_u64(signal_digest_, static_cast<std::uint64_t>(static_cast<int>(decision.reason)));
+          signal_digest_ = hash_double(signal_digest_, decision.edge);
+          signal_digest_ = hash_double(signal_digest_, decision.size_units);
+        }
 
         if (decision.allowed()) {
           ++stats_.decisions_allowed;
@@ -329,7 +456,7 @@ ReplayStats ReplayEngine::run(std::istream& input, const std::string& source_nam
         }
 
         // --- 5. execution --------------------------------------------------
-        if (decision.allowed()) {
+        if (decision.allowed() && !lifecycle_exit_triggered) {
           ++request_counter_;
           execution::OrderRequest request;
           request.client_order_id =
@@ -378,19 +505,21 @@ void ReplayEngine::finalize() {
   stats_.reconciliation = execution::reconcile(local_account_, broker_.account(), 1e-6);
 
   // Deterministic fingerprint of the whole run (used by replay tests).
-  std::uint64_t h = 14695981039346656037ULL;
-  for (const auto& record : signal_records_) {
-    hash_u64(h, static_cast<std::uint64_t>(record.time_ns));
-    hash_u64(h, static_cast<std::uint64_t>(static_cast<int>(record.kind)));
-    hash_u64(h, static_cast<std::uint64_t>(static_cast<int>(record.rejection)));
-    h = hash_double(h, record.exhaustion);
-    h = hash_double(h, record.expected_move_log);
-  }
-  for (const auto& record : decision_records_) {
-    hash_u64(h, static_cast<std::uint64_t>(static_cast<int>(record.action)));
-    hash_u64(h, static_cast<std::uint64_t>(static_cast<int>(record.reason)));
-    h = hash_double(h, record.edge);
-    h = hash_double(h, record.size_units);
+  std::uint64_t h = config_.retain_tick_records ? 14695981039346656037ULL : signal_digest_;
+  if (config_.retain_tick_records) {
+    for (const auto& record : signal_records_) {
+      hash_u64(h, static_cast<std::uint64_t>(record.time_ns));
+      hash_u64(h, static_cast<std::uint64_t>(static_cast<int>(record.kind)));
+      hash_u64(h, static_cast<std::uint64_t>(static_cast<int>(record.rejection)));
+      h = hash_double(h, record.exhaustion);
+      h = hash_double(h, record.expected_move_log);
+    }
+    for (const auto& record : decision_records_) {
+      hash_u64(h, static_cast<std::uint64_t>(static_cast<int>(record.action)));
+      hash_u64(h, static_cast<std::uint64_t>(static_cast<int>(record.reason)));
+      h = hash_double(h, record.edge);
+      h = hash_double(h, record.size_units);
+    }
   }
   for (const auto& fill : broker_.fills()) {
     hash_u64(h, static_cast<std::uint64_t>(fill.time_ns));

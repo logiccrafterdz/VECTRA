@@ -51,6 +51,10 @@ void apply_behavior(const Json& root, backtest::ReplayConfig* replay) {
   c.min_vol_samples = b->get_size("min_vol_samples", c.min_vol_samples);
   c.min_volatility = b->get_number("min_volatility", c.min_volatility);
   c.spread_warn_ratio = b->get_number("spread_warn_ratio", c.spread_warn_ratio);
+  c.window_short_ns = ms_to_ns(b, "window_short_ms", 0);
+  c.window_mid_ns = ms_to_ns(b, "window_mid_ms", 0);
+  c.window_long_ns = ms_to_ns(b, "window_long_ms", 0);
+  c.decel_lag_events = b->get_size("decel_lag_events", c.decel_lag_events);
 }
 
 void apply_exhaustion(const Json& root, backtest::ReplayConfig* replay) {
@@ -85,6 +89,16 @@ void apply_prediction(const Json& root, backtest::ReplayConfig* replay) {
   c.min_confidence = p->get_number("min_confidence", c.min_confidence);
   c.max_expected_move_log = p->get_number("max_expected_move_log", c.max_expected_move_log);
   c.full_confidence_samples = p->get_size("full_confidence_samples", c.full_confidence_samples);
+  c.require_mid_confirmation =
+      p->get_bool("require_mid_confirmation", c.require_mid_confirmation);
+  c.require_long_confirmation =
+      p->get_bool("require_long_confirmation", c.require_long_confirmation);
+  c.min_continuation_efficiency =
+      p->get_number("min_continuation_efficiency", c.min_continuation_efficiency);
+  c.max_reversal_efficiency =
+      p->get_number("max_reversal_efficiency", c.max_reversal_efficiency);
+  c.max_continuation_extension_z =
+      p->get_number("max_continuation_extension_z", c.max_continuation_extension_z);
 }
 
 void apply_risk(const Json& root, backtest::ReplayConfig* replay) {
@@ -99,6 +113,7 @@ void apply_risk(const Json& root, backtest::ReplayConfig* replay) {
   c.commission = r->get_number("commission", c.commission);
   c.slippage = r->get_number("slippage", c.slippage);
   c.max_spread = r->get_number("max_spread", c.max_spread);
+  c.round_trip_cost = r->get_bool("round_trip_cost", c.round_trip_cost);
   c.order_units = r->get_number("order_units", c.order_units);
   c.max_position_units = r->get_number("max_position_units", c.max_position_units);
   c.max_exposure = r->get_number("max_exposure", c.max_exposure);
@@ -109,6 +124,8 @@ void apply_risk(const Json& root, backtest::ReplayConfig* replay) {
       static_cast<int>(r->get_size("max_orders_per_day",
                                    static_cast<std::size_t>(
                                        c.max_orders_per_day < 0 ? 0 : c.max_orders_per_day)));
+  c.cooldown_events = r->get_size("cooldown_events", c.cooldown_events);
+  c.cooldown_ns = ms_to_ns(r, "cooldown_ms", 0);
   c.data_health_window = r->get_size("data_health_window", c.data_health_window);
   c.max_invalid_ratio = r->get_number("max_invalid_ratio", c.max_invalid_ratio);
   c.data_stale_gate_ns = ms_to_ns(r, "data_stale_gate_ms", 2000);
@@ -143,6 +160,16 @@ void apply_backtest(const Json& root, backtest::ReplayConfig* replay) {
   replay->min_latency_samples = b->get_size("min_latency_samples", replay->min_latency_samples);
   replay->max_equity_curve_points =
       b->get_size("max_equity_curve_points", replay->max_equity_curve_points);
+  replay->hold_horizon_events =
+      b->get_size("hold_horizon_events", replay->hold_horizon_events);
+  replay->hold_horizon_ns = ms_to_ns(b, "hold_horizon_ms", 0);
+  replay->eval_horizon_ns = ms_to_ns(b, "eval_horizon_ms", 0);
+  replay->stop_loss_price =
+      b->get_number("stop_loss_price", replay->stop_loss_price);
+  replay->take_profit_price =
+      b->get_number("take_profit_price", replay->take_profit_price);
+  replay->retain_tick_records =
+      b->get_bool("retain_tick_records", replay->retain_tick_records);
 }
 
 void apply_telemetry(const Json& root, backtest::ReplayConfig* replay) {
