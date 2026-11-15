@@ -1,0 +1,89 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1060 410" width="100%" height="auto" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif">
+  <rect width="1060" height="410" rx="10" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5"/>
+  <text x="30" y="36" font-size="16" font-weight="700" fill="#0f172a">VECTRA DETERMINISTIC 7-STAGE TICK PROCESSING PIPELINE</text>
+  <text x="30" y="56" font-size="12" fill="#475569">Strict causality (no future look-ahead) | Fixed-point PriceFixed (10^-8) | Bitwise reproducible FNV-1a 64-bit digest</text>
+
+  <!-- Row 1: Stages 1 to 4 -->
+  <!-- Stage 1 -->
+  <rect x="30" y="80" width="225" height="125" rx="8" fill="#ffffff" stroke="#94a3b8" stroke-width="1.5"/>
+  <rect x="30" y="80" width="225" height="28" rx="8" fill="#e2e8f0"/>
+  <text x="42" y="99" font-size="12" font-weight="700" fill="#0f172a">1. Market Hygiene &amp; Validation</text>
+  <text x="42" y="124" font-size="11" fill="#334155">• Fixed-point Bid/Ask parsing</text>
+  <text x="42" y="142" font-size="11" fill="#334155">• Rejects crossed/wide spreads</text>
+  <text x="42" y="160" font-size="11" fill="#334155">• Monotonic sequence &amp; staleness</text>
+  <text x="42" y="178" font-size="11" fill="#64748b">• Flags stale gaps (&gt; 15,000 ms)</text>
+
+  <line x1="255" y1="142" x2="280" y2="142" stroke="#2563eb" stroke-width="2"/>
+  <polygon points="280,142 272,137 272,147" fill="#2563eb"/>
+
+  <!-- Stage 2 -->
+  <rect x="285" y="80" width="235" height="125" rx="8" fill="#ffffff" stroke="#94a3b8" stroke-width="1.5"/>
+  <rect x="285" y="80" width="235" height="28" rx="8" fill="#dbeafe"/>
+  <text x="297" y="99" font-size="12" font-weight="700" fill="#1e3a8a">2. Wall-Clock Behavior Engine</text>
+  <text x="297" y="124" font-size="11" fill="#334155">• Provider windows: 120s / 240s / 720s</text>
+  <text x="297" y="142" font-size="11" fill="#334155">• Inter &amp; intra-window deceleration</text>
+  <text x="297" y="160" font-size="11" fill="#334155">• Welford volatility &amp; sign persistence</text>
+  <text x="297" y="178" font-size="11" fill="#1d4ed8">• 16-block regime path efficiency</text>
+
+  <line x1="520" y1="142" x2="545" y2="142" stroke="#2563eb" stroke-width="2"/>
+  <polygon points="545,142 537,137 537,147" fill="#2563eb"/>
+
+  <!-- Stage 3 -->
+  <rect x="550" y="80" width="225" height="125" rx="8" fill="#ffffff" stroke="#94a3b8" stroke-width="1.5"/>
+  <rect x="550" y="80" width="225" height="28" rx="8" fill="#e0f2fe"/>
+  <text x="562" y="99" font-size="12" font-weight="700" fill="#0c4a6e">3. Exhaustion Scorer</text>
+  <text x="562" y="124" font-size="11" fill="#334155">• Extension z-score (w = 0.30)</text>
+  <text x="562" y="142" font-size="11" fill="#334155">• Velocity deceleration (w = 0.25)</text>
+  <text x="562" y="160" font-size="11" fill="#334155">• Impulse response fade (w = 0.35)</text>
+  <text x="562" y="178" font-size="11" fill="#0369a1">• Spread/data quality (w = 0.10)</text>
+
+  <line x1="775" y1="142" x2="800" y2="142" stroke="#2563eb" stroke-width="2"/>
+  <polygon points="800,142 792,137 792,147" fill="#2563eb"/>
+
+  <!-- Stage 4 -->
+  <rect x="805" y="80" width="225" height="125" rx="8" fill="#ffffff" stroke="#94a3b8" stroke-width="1.5"/>
+  <rect x="805" y="80" width="225" height="28" rx="8" fill="#dcfce7"/>
+  <text x="817" y="99" font-size="12" font-weight="700" fill="#14532d">4. Directional Predictor</text>
+  <text x="817" y="124" font-size="11" fill="#334155">• Continuation vs. Reversal rules</text>
+  <text x="817" y="142" font-size="11" fill="#334155">• Efficiency gate (&gt;= 0.55 for Cont)</text>
+  <text x="817" y="160" font-size="11" fill="#334155">• Mid-window confirmation gate</text>
+  <text x="817" y="178" font-size="11" fill="#15803d">• Move scaling (Rev scale = 0.45)</text>
+
+  <!-- Connector from Stage 4 to Stage 5 -->
+  <path d="M 917 205 L 917 228 L 175 228 L 175 250" fill="none" stroke="#2563eb" stroke-width="2"/>
+  <polygon points="175,250 170,242 180,242" fill="#2563eb"/>
+
+  <!-- Row 2: Stages 5 to 7 -->
+  <!-- Stage 5 -->
+  <rect x="30" y="252" width="305" height="130" rx="8" fill="#ffffff" stroke="#94a3b8" stroke-width="1.5"/>
+  <rect x="30" y="252" width="305" height="28" rx="8" fill="#fef3c7"/>
+  <text x="42" y="271" font-size="12" font-weight="700" fill="#78350f">5. Twelve-Gate Pre-Trade Risk Engine</text>
+  <text x="42" y="296" font-size="11" fill="#334155">• KillSwitch, DataHealth &amp; StaleGate (15s)</text>
+  <text x="42" y="314" font-size="11" fill="#334155">• Wall-clock Cooldown timer (180s between entries)</text>
+  <text x="42" y="332" font-size="11" fill="#334155">• Full Round-Trip Cost Edge: Move - [Spread + 2*(Comm+Slip)]</text>
+  <text x="42" y="350" font-size="11" fill="#b45309">• Position, Exposure, Open Order &amp; Daily Loss caps</text>
+
+  <line x1="335" y1="317" x2="365" y2="317" stroke="#2563eb" stroke-width="2"/>
+  <polygon points="365,317 357,312 357,322" fill="#2563eb"/>
+
+  <!-- Stage 6 -->
+  <rect x="370" y="252" width="315" height="130" rx="8" fill="#ffffff" stroke="#94a3b8" stroke-width="1.5"/>
+  <rect x="370" y="252" width="315" height="28" rx="8" fill="#f1f5f9"/>
+  <text x="382" y="271" font-size="12" font-weight="700" fill="#0f172a">6. Simulated Broker &amp; Position Lifecycle</text>
+  <text x="382" y="296" font-size="11" fill="#334155">• Deterministic Ack (20ms) &amp; Fill (50ms) latency</text>
+  <text x="382" y="314" font-size="11" fill="#334155">• Bid/Ask crossing + per-unit slippage &amp; commission</text>
+  <text x="382" y="332" font-size="11" fill="#334155">• Automated Horizon exit (180s wall-clock hold)</text>
+  <text x="382" y="350" font-size="11" fill="#475569">• Stop-Loss (8 pips) &amp; Take-Profit (12 pips) exits</text>
+
+  <line x1="685" y1="317" x2="715" y2="317" stroke="#2563eb" stroke-width="2"/>
+  <polygon points="715,317 707,312 707,322" fill="#2563eb"/>
+
+  <!-- Stage 7 -->
+  <rect x="720" y="252" width="310" height="130" rx="8" fill="#ffffff" stroke="#94a3b8" stroke-width="1.5"/>
+  <rect x="720" y="252" width="310" height="28" rx="8" fill="#ede9fe"/>
+  <text x="732" y="271" font-size="12" font-weight="700" fill="#4c1d95">7. Causal Audit, Calibration &amp; Telemetry</text>
+  <text x="732" y="296" font-size="11" fill="#334155">• Forward evaluation at t + 180s vs. Naive Baseline</text>
+  <text x="732" y="314" font-size="11" fill="#334155">• Autocorrelation-free Non-Overlapping Block t-stats</text>
+  <text x="732" y="332" font-size="11" fill="#334155">• 5-Bin Score Reliability &amp; Brier calibration table</text>
+  <text x="732" y="350" font-size="11" fill="#6d28d9">• Sub-microsecond latency &amp; FNV-1a 64-bit digest</text>
+</svg>

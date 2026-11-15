@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 360" width="100%" height="auto" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif">
+  <rect width="960" height="360" rx="10" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5"/>
+  <text x="30" y="36" font-size="16" font-weight="700" fill="#0f172a">REAL EUR/USD 4-WAY CHRONOLOGICAL SPLIT PERFORMANCE (461,357 TICKS, 20.98 HOURS)</text>
+  <text x="30" y="56" font-size="12" fill="#475569">Gross P&amp;L is positive across all 4/4 splits (+42.90 USD total); Combined Blind Out-of-Sample (OOS 1 + OOS 2) Net P&amp;L is positive (+0.80 USD)</text>
+
+  <!-- Legend -->
+  <rect x="650" y="24" width="14" height="14" rx="3" fill="#0d9488"/>
+  <text x="670" y="35" font-size="12" font-weight="600" fill="#0f172a">Gross P&amp;L (after spread)</text>
+  <rect x="820" y="24" width="14" height="14" rx="3" fill="#2563eb"/>
+  <text x="840" y="35" font-size="12" font-weight="600" fill="#0f172a">Net P&amp;L (all costs)</text>
+
+  <!-- Grid: Zero at y=260, scale = 3.5px per USD -->
+  <line x1="80" y1="260" x2="920" y2="260" stroke="#64748b" stroke-width="1.5"/>
+  <text x="70" y="264" font-size="11" font-weight="600" fill="#475569" text-anchor="end">0.00 USD</text>
+
+  <line x1="80" y1="190" x2="920" y2="190" stroke="#e2e8f0" stroke-width="1"/>
+  <text x="70" y="194" font-size="11" fill="#64748b" text-anchor="end">+20.00 USD</text>
+
+  <line x1="80" y1="120" x2="920" y2="120" stroke="#e2e8f0" stroke-width="1"/>
+  <text x="70" y="124" font-size="11" fill="#64748b" text-anchor="end">+40.00 USD</text>
+
+  <!-- DEV: Gross +22.50 (78.8px -> y=181.2), Net +18.90 (66.2px -> y=193.8) -->
+  <rect x="115" y="181.2" width="44" height="78.8" rx="4" fill="#0d9488"/>
+  <text x="137" y="174" font-size="11" font-weight="700" fill="#0f766e" text-anchor="middle">+22.50</text>
+  <rect x="165" y="193.8" width="44" height="66.2" rx="4" fill="#2563eb"/>
+  <text x="187" y="186" font-size="11" font-weight="700" fill="#1d4ed8" text-anchor="middle">+18.90</text>
+  <text x="162" y="285" font-size="12" font-weight="700" fill="#0f172a" text-anchor="middle">DEV (1-100k)</text>
+  <text x="162" y="302" font-size="10" fill="#64748b" text-anchor="middle">6.48h | 36 fills | DD 16.10</text>
+
+  <!-- VAL: Gross +11.30 (39.6px -> y=220.4), Net +7.00 (24.5px -> y=235.5) -->
+  <rect x="275" y="220.4" width="44" height="39.6" rx="4" fill="#0d9488"/>
+  <text x="297" y="213" font-size="11" font-weight="700" fill="#0f766e" text-anchor="middle">+11.30</text>
+  <rect x="325" y="235.5" width="44" height="24.5" rx="4" fill="#2563eb"/>
+  <text x="347" y="228" font-size="11" font-weight="700" fill="#1d4ed8" text-anchor="middle">+7.00</text>
+  <text x="322" y="285" font-size="12" font-weight="700" fill="#0f172a" text-anchor="middle">VAL (100k-200k)</text>
+  <text x="322" y="302" font-size="10" fill="#64748b" text-anchor="middle">2.95h | 43 fills | DD 21.70</text>
+
+  <!-- OOS 1: Gross +4.00 (14px -> y=246), Net -0.70 (2.5px -> y=260..262.5) -->
+  <rect x="435" y="246" width="44" height="14" rx="3" fill="#0d9488"/>
+  <text x="457" y="239" font-size="11" font-weight="700" fill="#0f766e" text-anchor="middle">+4.00</text>
+  <rect x="485" y="260" width="44" height="3.5" rx="2" fill="#f97316"/>
+  <text x="507" y="253" font-size="11" font-weight="700" fill="#c2410c" text-anchor="middle">-0.70</text>
+  <text x="482" y="285" font-size="12" font-weight="700" fill="#0f172a" text-anchor="middle">OOS 1 (200k-300k)</text>
+  <text x="482" y="302" font-size="10" fill="#64748b" text-anchor="middle">3.55h | 47 fills | DD 23.10</text>
+
+  <!-- OOS 2: Gross +5.10 (17.9px -> y=242.1), Net +1.50 (5.3px -> y=254.7) -->
+  <rect x="595" y="242.1" width="44" height="17.9" rx="3" fill="#0d9488"/>
+  <text x="617" y="235" font-size="11" font-weight="700" fill="#0f766e" text-anchor="middle">+5.10</text>
+  <rect x="645" y="254.7" width="44" height="5.3" rx="2" fill="#2563eb"/>
+  <text x="667" y="247" font-size="11" font-weight="700" fill="#1d4ed8" text-anchor="middle">+1.50</text>
+  <text x="642" y="285" font-size="12" font-weight="700" fill="#0f172a" text-anchor="middle">OOS 2 (300k-461.4k)</text>
+  <text x="642" y="302" font-size="10" fill="#64748b" text-anchor="middle">8.00h | 36 fills | DD 14.40</text>
+
+  <!-- TOTAL: Gross +42.90 (150.2px -> y=109.8), Net +26.70 (93.5px -> y=166.5) -->
+  <rect x="765" y="109.8" width="48" height="150.2" rx="4" fill="#0f766e"/>
+  <text x="789" y="102" font-size="12" font-weight="700" fill="#0f766e" text-anchor="middle">+42.90</text>
+  <rect x="819" y="166.5" width="48" height="93.5" rx="4" fill="#16a34a"/>
+  <text x="843" y="159" font-size="12" font-weight="700" fill="#15803d" text-anchor="middle">+26.70</text>
+  <text x="816" y="285" font-size="12" font-weight="700" fill="#0f172a" text-anchor="middle">TOTAL (461.4k)</text>
+  <text x="816" y="302" font-size="10" fill="#15803d" text-anchor="middle">20.98h | 162 fills | OOS Net +0.80</text>
+</svg>
