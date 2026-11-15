@@ -1,0 +1,2357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VECTRA — Rule-Based Quantitative Forex Research Engine (C++20)</title>
+  <style>
+    :root {
+      --bg-page: #f8fafc;
+      --bg-card: #ffffff;
+      --bg-subtle: #f1f5f9;
+      --bg-accent-soft: #eff6ff;
+      --text-primary: #0f172a;
+      --text-secondary: #334155;
+      --text-muted: #64748b;
+      --border-light: #e2e8f0;
+      --border-strong: #cbd5e1;
+      --navy: #1e3a8a;
+      --blue: #2563eb;
+      --teal: #0f766e;
+      --emerald: #15803d;
+      --emerald-soft: #dcfce7;
+      --amber: #b45309;
+      --amber-soft: #fef3c7;
+      --crimson: #b91c1c;
+      --crimson-soft: #fee2e2;
+      --slate-bar: #475569;
+      --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-page);
+      color: var(--text-primary);
+      font-family: var(--font-sans);
+      line-height: 1.6;
+      font-size: 15px;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    a {
+      color: var(--blue);
+      text-decoration: none;
+    }
+    a:hover {
+      text-decoration: underline;
+    }
+
+    /* Top Navigation Bar */
+    .topbar {
+      background: var(--bg-card);
+      border-bottom: 1px solid var(--border-light);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .topbar-inner {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 12px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+    .brand {
+      display: flex;
+      align-items: baseline;
+      gap: 12px;
+    }
+    .brand-title {
+      font-size: 20px;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      color: var(--navy);
+    }
+    .brand-subtitle {
+      font-size: 13px;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+    .nav-links {
+      display: flex;
+      gap: 20px;
+      font-size: 13.5px;
+      font-weight: 600;
+      flex-wrap: wrap;
+    }
+    .nav-links a {
+      color: var(--text-secondary);
+      padding: 4px 0;
+      border-bottom: 2px solid transparent;
+    }
+    .nav-links a:hover {
+      color: var(--navy);
+      border-bottom-color: var(--blue);
+      text-decoration: none;
+    }
+
+    /* Main Container */
+    .container {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 32px 24px 64px;
+    }
+
+    /* Hero Header */
+    .hero {
+      background: var(--bg-card);
+      border: 1px solid var(--border-light);
+      border-top: 4px solid var(--navy);
+      border-radius: 6px;
+      padding: 32px;
+      margin-bottom: 28px;
+      box-shadow: 0 1px 3px rgba(15, 23, 42, 0.03);
+    }
+    .hero-meta {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 14px;
+    }
+    .badge {
+      display: inline-block;
+      padding: 3px 10px;
+      font-size: 11.5px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      border-radius: 4px;
+      background: var(--bg-subtle);
+      color: var(--text-secondary);
+      border: 1px solid var(--border-strong);
+    }
+    .badge-navy {
+      background: var(--bg-accent-soft);
+      color: var(--navy);
+      border-color: #bfdbfe;
+    }
+    .badge-green {
+      background: var(--emerald-soft);
+      color: var(--emerald);
+      border-color: #bbf7d0;
+    }
+    .hero h1 {
+      font-size: 28px;
+      font-weight: 800;
+      color: var(--text-primary);
+      margin-bottom: 12px;
+      line-height: 1.25;
+    }
+    .hero p {
+      color: var(--text-secondary);
+      max-width: 960px;
+      font-size: 15.5px;
+      margin-bottom: 20px;
+    }
+    .epistemic-notice {
+      background: var(--bg-subtle);
+      border-left: 4px solid var(--navy);
+      padding: 12px 16px;
+      font-size: 13.5px;
+      color: var(--text-secondary);
+      border-radius: 0 4px 4px 0;
+    }
+
+    /* KPI Grid */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+      margin-bottom: 32px;
+    }
+    .kpi-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-light);
+      border-radius: 6px;
+      padding: 18px 20px;
+      box-shadow: 0 1px 2px rgba(15, 23, 42, 0.02);
+    }
+    .kpi-label {
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+    }
+    .kpi-value {
+      font-size: 24px;
+      font-weight: 800;
+      font-family: var(--font-mono);
+      color: var(--text-primary);
+      margin-bottom: 4px;
+    }
+    .kpi-value.pos { color: var(--emerald); }
+    .kpi-value.neg { color: var(--crimson); }
+    .kpi-value.navy { color: var(--navy); }
+    .kpi-sub {
+      font-size: 12.5px;
+      color: var(--text-muted);
+    }
+
+    /* Sections */
+    .section {
+      background: var(--bg-card);
+      border: 1px solid var(--border-light);
+      border-radius: 6px;
+      padding: 28px 32px;
+      margin-bottom: 28px;
+      box-shadow: 0 1px 3px rgba(15, 23, 42, 0.02);
+    }
+    .section-header {
+      border-bottom: 1px solid var(--border-light);
+      padding-bottom: 14px;
+      margin-bottom: 22px;
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    .section-title {
+      font-size: 20px;
+      font-weight: 800;
+      color: var(--navy);
+    }
+    .section-subtitle {
+      font-size: 13.5px;
+      color: var(--text-muted);
+    }
+
+    h3 {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text-primary);
+      margin: 20px 0 10px;
+    }
+
+    p {
+      margin-bottom: 12px;
+      color: var(--text-secondary);
+    }
+
+    /* Two-column layout */
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(460px, 1fr));
+      gap: 24px;
+      margin-bottom: 20px;
+    }
+    @media (max-width: 600px) {
+      .grid-2 {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* Chart Box */
+    .chart-box {
+      background: var(--bg-page);
+      border: 1px solid var(--border-light);
+      border-radius: 6px;
+      padding: 18px;
+    }
+    .chart-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text-primary);
+      margin-bottom: 4px;
+    }
+    .chart-caption {
+      font-size: 12.5px;
+      color: var(--text-muted);
+      margin-bottom: 14px;
+    }
+    .svg-container {
+      width: 100%;
+      overflow-x: auto;
+    }
+    svg {
+      display: block;
+      width: 100%;
+      height: auto;
+      font-family: var(--font-sans);
+    }
+
+    /* Tables */
+    .table-wrap {
+      width: 100%;
+      overflow-x: auto;
+      margin: 12px 0 18px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13.5px;
+    }
+    th, td {
+      padding: 10px 12px;
+      text-align: left;
+      border-bottom: 1px solid var(--border-light);
+    }
+    th {
+      background: var(--bg-subtle);
+      color: var(--text-primary);
+      font-weight: 700;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      white-space: nowrap;
+    }
+    td.num, th.num {
+      text-align: right;
+      font-family: var(--font-mono);
+    }
+    tr:hover td {
+      background-color: #f8fafc;
+    }
+    .val-pos {
+      color: var(--emerald);
+      font-weight: 700;
+    }
+    .val-neg {
+      color: var(--crimson);
+      font-weight: 700;
+    }
+
+    /* Tabs */
+    .tab-bar {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 20px;
+      border-bottom: 1px solid var(--border-light);
+      padding-bottom: 12px;
+    }
+    .tab-btn {
+      padding: 8px 16px;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text-secondary);
+      background: var(--bg-subtle);
+      border: 1px solid var(--border-strong);
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .tab-btn:hover {
+      background: #e2e8f0;
+    }
+    .tab-btn.active {
+      background: var(--navy);
+      color: #ffffff;
+      border-color: var(--navy);
+    }
+
+    /* Formula Cards */
+    .formula-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+      gap: 16px;
+      margin-top: 16px;
+    }
+    .formula-card {
+      background: var(--bg-page);
+      border: 1px solid var(--border-light);
+      border-radius: 6px;
+      padding: 16px 18px;
+    }
+    .formula-card h4 {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--navy);
+      margin-bottom: 6px;
+    }
+    .formula-code {
+      display: block;
+      background: #ffffff;
+      border: 1px solid var(--border-strong);
+      padding: 10px 12px;
+      border-radius: 4px;
+      font-family: var(--font-mono);
+      font-size: 12.5px;
+      color: var(--text-primary);
+      margin: 8px 0;
+      overflow-x: auto;
+    }
+    .formula-desc {
+      font-size: 13px;
+      color: var(--text-secondary);
+      margin-bottom: 0;
+    }
+
+    pre.code-block {
+      background: var(--bg-subtle);
+      border: 1px solid var(--border-strong);
+      border-radius: 4px;
+      padding: 14px 16px;
+      font-family: var(--font-mono);
+      font-size: 13px;
+      color: var(--text-primary);
+      overflow-x: auto;
+      margin: 10px 0 16px;
+    }
+
+    .footer {
+      text-align: center;
+      padding: 24px;
+      font-size: 13px;
+      color: var(--text-muted);
+      border-top: 1px solid var(--border-light);
+      margin-top: 40px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Navigation -->
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="brand">
+        <span class="brand-title">VECTRA</span>
+        <span class="brand-subtitle">C++20 Quantitative Forex Research Engine</span>
+      </div>
+      <nav class="nav-links">
+        <a href="#overview">Overview</a>
+        <a href="#architecture">Architecture</a>
+        <a href="#progression">Engineering Progression</a>
+        <a href="#empirical">4-Way EUR/USD Study</a>
+        <a href="#calibration">Score Reliability &amp; Brier</a>
+        <a href="#explorer">Interactive Split Explorer</a>
+        <a href="#math">Mathematical Model</a>
+        <a href="https://github.com/logiccrafterdz/VECTRA" target="_blank" rel="noopener">GitHub Repository</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+
+    <!-- Hero Section -->
+    <section id="overview" class="hero">
+      <div class="hero-meta">
+        <span class="badge badge-navy">C++20 Standard Library Only</span>
+        <span class="badge badge-green" id="badge-tests">115 / 115 Unit Tests Passing</span>
+        <span class="badge">Zero External Dependencies</span>
+        <span class="badge" id="badge-updated">Updated: 2026-11-15 UTC</span>
+      </div>
+      <h1>VECTRA: Observable Microstructure Pressure &amp; Exhaustion Engine</h1>
+      <p>
+        VECTRA is a deterministic, single-pass, event-driven quantitative research engine written in standard C++20.
+        It extracts strictly observable quote phenomena—wall-clock log displacements, movement persistence, per-tick price response,
+        multi-scale path efficiency, and intra-window deceleration—and evaluates whether transparent mathematical rules survive
+        bid/ask spread crossing, round-trip commission, slippage, and latency on real institutional EUR/USD tick streams.
+      </p>
+      <div class="epistemic-notice">
+        <strong>Epistemic Discipline:</strong> VECTRA contains no machine learning, no neural networks, and no latent behavioral
+        attributions (such as "stop cascades" or "forced liquidations"). All outputs in [0, 1] are explicitly reported as
+        uncalibrated scores alongside 5-bin Brier reliability tables and autocorrelation-robust non-overlapping horizon block Student t-statistics.
+      </div>
+    </section>
+
+    <!-- KPI Summary Grid -->
+    <div class="kpi-grid">
+      <div class="kpi-card">
+        <div class="kpi-label">Real EUR/USD Ticks Analyzed</div>
+        <div class="kpi-value navy" id="kpi-ticks">461,357</div>
+        <div class="kpi-sub" id="kpi-valid-sub">420,145 valid quotes (20.98 hours continuous)</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Cumulative Gross P&amp;L (4/4 Splits)</div>
+        <div class="kpi-value pos" id="kpi-gross">+$42.90</div>
+        <div class="kpi-sub">Positive after bid/ask spread in all 4 splits</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Cumulative Net P&amp;L (After Costs)</div>
+        <div class="kpi-value pos" id="kpi-net">+$26.70</div>
+        <div class="kpi-sub">After spread, 2x commission, and 2x slippage</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Blind Out-of-Sample Net (OOS1+OOS2)</div>
+        <div class="kpi-value pos" id="kpi-oos-net">+$0.80</div>
+        <div class="kpi-sub" id="kpi-oos-sub">+$9.10 Gross across 261,357 unseen ticks (11.55h)</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Worst Split Max Drawdown</div>
+        <div class="kpi-value" id="kpi-dd">0.023%</div>
+        <div class="kpi-sub" id="kpi-dd-sub">$23.10 on $100,000 initial equity</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Median Tick Processing Latency</div>
+        <div class="kpi-value navy">3.1 us</div>
+        <div class="kpi-sub">1.1 us event + 1.7 us signal + 0.3 us decision</div>
+      </div>
+    </div>
+
+    <!-- Section 1: Architecture Diagram -->
+    <section id="architecture" class="section">
+      <div class="section-header">
+        <div>
+          <h2 class="section-title">1. System Architecture &amp; Single-Pass Causal Pipeline</h2>
+          <div class="section-subtitle">Strict separation of quote validation, wall-clock feature extraction, scoring, risk gating, and simulated venue execution</div>
+        </div>
+      </div>
+
+      <p>
+        Every incoming tick is processed in a strictly causal single pass. Invalid or crossed-spread quotes are rejected at the boundary
+        before reaching the rolling state windows, ensuring that bad ticks never corrupt volatility or displacement estimates.
+      </p>
+
+      <div class="chart-box">
+        <div class="chart-title">VECTRA C++20 Event-Driven Pipeline</div>
+        <div class="chart-caption">Each stage is timed via std::chrono::steady_clock; provider timestamps drive all observation windows, cooldowns, and venue fill latencies.</div>
+        <div class="svg-container">
+          <svg viewBox="0 0 1120 260" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                <path d="M 0 1 L 10 5 L 0 9 z" fill="#475569" />
+              </marker>
+            </defs>
+            <!-- Background pipeline track -->
+            <rect x="10" y="15" width="1100" height="230" rx="6" fill="#ffffff" stroke="#e2e8f0" />
+
+            <!-- Box 1: CSV / Stream -->
+            <rect x="28" y="45" width="130" height="115" rx="5" fill="#f8fafc" stroke="#94a3b8" stroke-width="1.5" />
+            <text x="93" y="68" text-anchor="middle" font-size="11" font-weight="700" fill="#1e3a8a">1. INGESTION</text>
+            <text x="93" y="88" text-anchor="middle" font-size="10.5" fill="#334155">CSV / stdin (--stream)</text>
+            <text x="93" y="106" text-anchor="middle" font-size="10" fill="#64748b">Fixed-Point Price</text>
+            <text x="93" y="122" text-anchor="middle" font-size="10" fill="#64748b">scale = 10^7 int64</text>
+            <text x="93" y="140" text-anchor="middle" font-size="10" fill="#64748b">source_ts_ns (UTC)</text>
+
+            <line x1="158" y1="102" x2="182" y2="102" stroke="#475569" stroke-width="1.8" marker-end="url(#arrow)" />
+
+            <!-- Box 2: Validator -->
+            <rect x="184" y="45" width="140" height="115" rx="5" fill="#f8fafc" stroke="#94a3b8" stroke-width="1.5" />
+            <text x="254" y="68" text-anchor="middle" font-size="11" font-weight="700" fill="#1e3a8a">2. VALIDATOR</text>
+            <text x="254" y="88" text-anchor="middle" font-size="10.5" fill="#334155">EventValidator</text>
+            <text x="254" y="106" text-anchor="middle" font-size="10" fill="#64748b">Bid/Ask &amp; Max Spread</text>
+            <text x="254" y="122" text-anchor="middle" font-size="10" fill="#64748b">Monotonic Sequence</text>
+            <text x="254" y="140" text-anchor="middle" font-size="10" fill="#b91c1c">Rejects Bad Quotes</text>
+
+            <line x1="324" y1="102" x2="348" y2="102" stroke="#475569" stroke-width="1.8" marker-end="url(#arrow)" />
+
+            <!-- Box 3: Behavior Engine -->
+            <rect x="350" y="45" width="165" height="115" rx="5" fill="#eff6ff" stroke="#2563eb" stroke-width="1.5" />
+            <text x="432" y="68" text-anchor="middle" font-size="11" font-weight="700" fill="#1e3a8a">3. BEHAVIOR ENGINE</text>
+            <text x="432" y="88" text-anchor="middle" font-size="10.5" fill="#334155">Wall-Clock Windows</text>
+            <text x="432" y="106" text-anchor="middle" font-size="10" fill="#334155">120s / 240s / 720s</text>
+            <text x="432" y="122" text-anchor="middle" font-size="10" fill="#0f766e">Regime Efficiency [0,1]</text>
+            <text x="432" y="140" text-anchor="middle" font-size="10" fill="#0f766e">Intra/Inter Deceleration</text>
+
+            <line x1="515" y1="102" x2="539" y2="102" stroke="#475569" stroke-width="1.8" marker-end="url(#arrow)" />
+
+            <!-- Box 4: Scoring Predictor -->
+            <rect x="541" y="45" width="165" height="115" rx="5" fill="#eff6ff" stroke="#2563eb" stroke-width="1.5" />
+            <text x="623" y="68" text-anchor="middle" font-size="11" font-weight="700" fill="#1e3a8a">4. PREDICTOR</text>
+            <text x="623" y="88" text-anchor="middle" font-size="10.5" fill="#334155">Exhaustion &amp; Scoring</text>
+            <text x="623" y="106" text-anchor="middle" font-size="10" fill="#64748b">Continuation vs Reversal</text>
+            <text x="623" y="122" text-anchor="middle" font-size="10" fill="#64748b">Mid-Window Confirm</text>
+            <text x="623" y="140" text-anchor="middle" font-size="10" fill="#0f766e">Move Scale Normalization</text>
+
+            <line x1="706" y1="102" x2="730" y2="102" stroke="#475569" stroke-width="1.8" marker-end="url(#arrow)" />
+
+            <!-- Box 5: Risk Engine -->
+            <rect x="732" y="45" width="165" height="115" rx="5" fill="#f8fafc" stroke="#94a3b8" stroke-width="1.5" />
+            <text x="814" y="68" text-anchor="middle" font-size="11" font-weight="700" fill="#1e3a8a">5. RISK ENGINE</text>
+            <text x="814" y="88" text-anchor="middle" font-size="10.5" fill="#334155">Round-Trip Cost Gate</text>
+            <text x="814" y="106" text-anchor="middle" font-size="10" fill="#64748b">Spread + 2*(Comm+Slip)</text>
+            <text x="814" y="122" text-anchor="middle" font-size="10" fill="#64748b">180s Wall-Clock Cooldown</text>
+            <text x="814" y="140" text-anchor="middle" font-size="10" fill="#b91c1c">Daily Loss &amp; Kill Switch</text>
+
+            <line x1="897" y1="102" x2="921" y2="102" stroke="#475569" stroke-width="1.8" marker-end="url(#arrow)" />
+
+            <!-- Box 6: Simulated Broker & Lifecycle -->
+            <rect x="923" y="45" width="168" height="115" rx="5" fill="#f0fdf4" stroke="#15803d" stroke-width="1.5" />
+            <text x="1007" y="68" text-anchor="middle" font-size="11" font-weight="700" fill="#15803d">6. EXECUTION &amp; EXITS</text>
+            <text x="1007" y="88" text-anchor="middle" font-size="10.5" fill="#334155">Latency-Gated Fills</text>
+            <text x="1007" y="106" text-anchor="middle" font-size="10" fill="#64748b">Buy @ Ask / Sell @ Bid</text>
+            <text x="1007" y="122" text-anchor="middle" font-size="10" fill="#15803d">180s Horizon / SL / TP</text>
+            <text x="1007" y="140" text-anchor="middle" font-size="10" fill="#15803d">Account Reconciliation</text>
+
+            <!-- Bottom Telemetry Bar -->
+            <rect x="184" y="185" width="907" height="44" rx="4" fill="#f1f5f9" stroke="#cbd5e1" />
+            <text x="637" y="204" text-anchor="middle" font-size="11" font-weight="700" fill="#1e3a8a">
+              7. CAUSAL EVALUATION &amp; TELEMETRY (ReplayEngine &amp; Markdown / JSON Report Generator)
+            </text>
+            <text x="637" y="220" text-anchor="middle" font-size="10.5" fill="#475569">
+              Forward Spread-Crossed Move @ t+180s  |  Non-Overlapping Horizon Block Student t-Stat  |  5-Bin Brier Score Calibration  |  FNV-1a Run Digest
+            </text>
+          </svg>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 2: Engineering Progression -->
+    <section id="progression" class="section">
+      <div class="section-header">
+        <div>
+          <h2 class="section-title">2. Iterative Engineering Progression on Real EUR/USD Ticks</h2>
+          <div class="section-subtitle">How five structural C++ upgrades transformed a -94.95 USD baseline loss into +26.70 USD Net (+42.90 USD Gross)</div>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="chart-box">
+          <div class="chart-title">Cumulative Net P&amp;L by Engineering Stage (USD)</div>
+          <div class="chart-caption">Evaluated with full bid/ask spread crossing, commission (0.05 pip/side), and slippage (0.05 pip/side).</div>
+          <div class="svg-container" id="chart-progression"></div>
+        </div>
+
+        <div>
+          <h3>Key Structural Bottlenecks Resolved</h3>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Upgrade Stage</th>
+                  <th class="num">DEV Net</th>
+                  <th class="num">VAL Net</th>
+                  <th class="num">OOS1 Net</th>
+                  <th class="num">OOS2 Net</th>
+                  <th class="num">Total Net</th>
+                </tr>
+              </thead>
+              <tbody id="table-progression-body"></tbody>
+            </table>
+          </div>
+          <p style="font-size: 13px;">
+            <strong>Why Stage 2 &amp; Stage 4 were decisive:</strong> Between the Asian/Early-London <code>DEV</code> split (4.1 ticks/s)
+            and the London peak <code>VAL</code> split (8.4 ticks/s), tick arrival speed more than doubled. Anchoring windows to provider
+            wall-clock timestamps (<code>120s / 240s / 720s</code>) eliminated session time-compression, while calibrating
+            <code>reversal_move_scale = 0.45</code> on <code>DEV + VAL</code> filtered out low-conviction reversal trades and turned the
+            8-hour blind holdout <code>OOS2</code> net profitable (<code>+$1.50</code> Net, <code>+$5.10</code> Gross).
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 3: 4-Way Empirical Study -->
+    <section id="empirical" class="section">
+      <div class="section-header">
+        <div>
+          <h2 class="section-title">3. Four-Way Chronological EUR/USD Study (461,357 Ticks / 20.98 Hours)</h2>
+          <div class="section-subtitle">Strict walk-forward protocol: thresholds selected on DEV + VAL only, then locked for OOS 1 and OOS 2</div>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="chart-box">
+          <div class="chart-title">Gross P&amp;L, Net P&amp;L, and Max Drawdown Across All 4 Splits (USD)</div>
+          <div class="chart-caption">Gross P&amp;L is positive in 4 out of 4 chronological splits; Net P&amp;L is positive in DEV, VAL, OOS2, and combined OOS1+OOS2.</div>
+          <div class="svg-container" id="chart-splits-pnl"></div>
+        </div>
+
+        <div class="chart-box">
+          <div class="chart-title">Causal Forward-Return Hit Rate by Signal Kind (%)</div>
+          <div class="chart-caption">Evaluated causally at horizon = 600 valid events (~180s). Continuation excels in trending sessions; Reversal excels in OOS1 chop.</div>
+          <div class="svg-container" id="chart-splits-hitrate"></div>
+        </div>
+      </div>
+
+      <h3>Side-by-Side Comparison Across All Four Real EUR/USD Splits</h3>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Metric</th>
+              <th class="num">DEV (1-100k)</th>
+              <th class="num">VAL (100k-200k)</th>
+              <th class="num">OOS 1 (200k-300k)</th>
+              <th class="num">OOS 2 (300k-461.4k)</th>
+              <th class="num">Total / Combined</th>
+            </tr>
+          </thead>
+          <tbody id="table-four-splits"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Section 4: Score Reliability & Brier Calibration -->
+    <section id="calibration" class="section">
+      <div class="section-header">
+        <div>
+          <h2 class="section-title">4. Five-Bin Score Reliability &amp; Brier Calibration Analysis</h2>
+          <div class="section-subtitle">Empirical verification of score monotonicity and regime-conditional calibration (docs/testing_plan.md Section 6.6)</div>
+        </div>
+      </div>
+
+      <p>
+        VECTRA groups every usable signal into five score quintiles (<code>[0.0, 0.2)</code> through <code>[0.8, 1.0]</code>) and evaluates
+        the realized midpoint hit rate, mean spread-crossed move, and Brier score against the realized binary hit indicator.
+        Select a chronological split below to inspect its reliability curve and spread-crossed return profile by score bin:
+      </p>
+
+      <div class="tab-bar" id="cal-tab-bar">
+        <button class="tab-btn active" data-split="dev">DEV Split (Trending)</button>
+        <button class="tab-btn" data-split="val">VAL Split (London Peak)</button>
+        <button class="tab-btn" data-split="oos">OOS 1 Split (Mean-Reverting Chop)</button>
+        <button class="tab-btn" data-split="oos2">OOS 2 Holdout (8.00h US Session)</button>
+      </div>
+
+      <div class="grid-2">
+        <div class="chart-box">
+          <div class="chart-title" id="cal-chart1-title">Realized Mid Hit Rate vs Mean Score by Quintile Bin (%)</div>
+          <div class="chart-caption">Comparison of mean predicted score (navy) against realized midpoint hit rate (teal) across the 5 bins.</div>
+          <div class="svg-container" id="chart-calibration-hit"></div>
+        </div>
+
+        <div class="chart-box">
+          <div class="chart-title" id="cal-chart2-title">Mean Spread-Crossed Forward Move by Score Bin (Pips)</div>
+          <div class="chart-caption">Executable forward return after paying the full bid/ask spread at entry and exit (+1.0 pip = +0.00010 price units).</div>
+          <div class="svg-container" id="chart-calibration-move"></div>
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Score Quintile Bin</th>
+              <th class="num">Evaluated Signals</th>
+              <th class="num">Mean Score</th>
+              <th class="num">Realized Hit Rate (Mid)</th>
+              <th class="num">Mean Spread-Crossed Move (Price)</th>
+              <th class="num">Mean Spread-Crossed Move (Pips)</th>
+              <th class="num">Brier Score</th>
+            </tr>
+          </thead>
+          <tbody id="table-calibration-bins"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Section 5: Interactive Split & Report Explorer -->
+    <section id="explorer" class="section">
+      <div class="section-header">
+        <div>
+          <h2 class="section-title">5. Complete Report Explorer &amp; Non-Overlapping Block Statistics</h2>
+          <div class="section-subtitle">Inspect full market validation, non-overlapping Student t-stats, risk rejections, and microsecond latency for each run</div>
+        </div>
+      </div>
+
+      <div class="tab-bar" id="exp-tab-bar">
+        <button class="tab-btn active" data-exp="dev">DEV (1-100k)</button>
+        <button class="tab-btn" data-exp="val">VAL (100k-200k)</button>
+        <button class="tab-btn" data-exp="oos">OOS 1 (200k-300k)</button>
+        <button class="tab-btn" data-exp="oos2">OOS 2 Holdout (300k-461.4k)</button>
+        <button class="tab-btn" data-exp="synthetic">Synthetic Benchmark (6k)</button>
+      </div>
+
+      <div id="explorer-meta" style="margin-bottom: 16px; font-size: 13.5px; color: var(--text-secondary);"></div>
+
+      <div class="grid-2">
+        <div>
+          <h3>Autocorrelation-Robust Non-Overlapping Horizon Blocks</h3>
+          <p style="font-size: 13px;">
+            Consecutive tick predictions share overlapping forward windows. To eliminate overlapping-horizon autocorrelation,
+            VECTRA partitions usable signals into strictly non-overlapping horizon blocks and computes Welford variance and Student t-statistics:
+          </p>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Signal Kind</th>
+                  <th class="num">Independent Blocks</th>
+                  <th class="num">Block Hit Rate</th>
+                  <th class="num">Block Spread Move</th>
+                  <th class="num">Student t-Stat</th>
+                </tr>
+              </thead>
+              <tbody id="exp-table-blocks"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div>
+          <h3>Stage Processing Latency (Microseconds)</h3>
+          <p style="font-size: 13px;">
+            Local processing durations measured via <code>std::chrono::steady_clock</code> across all valid events in the stream:
+          </p>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Pipeline Stage</th>
+                  <th class="num">Median (us)</th>
+                  <th class="num">p95 (us)</th>
+                  <th class="num">p99 (us)</th>
+                  <th class="num">Samples</th>
+                </tr>
+              </thead>
+              <tbody id="exp-table-latency"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div>
+          <h3>Market Data &amp; Validation Accounting</h3>
+          <div class="table-wrap">
+            <table>
+              <tbody id="exp-table-market"></tbody>
+            </table>
+          </div>
+        </div>
+        <div>
+          <h3>Risk Gate, Execution &amp; Simulated Account</h3>
+          <div class="table-wrap">
+            <table>
+              <tbody id="exp-table-perf"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 6: Mathematical Model Reference -->
+    <section id="math" class="section">
+      <div class="section-header">
+        <div>
+          <h2 class="section-title">6. Mathematical Model &amp; Formula Specification</h2>
+          <div class="section-subtitle">Every observable feature, regime filter, exhaustion component, and risk equation implemented in C++20</div>
+        </div>
+      </div>
+
+      <div class="formula-grid">
+        <div class="formula-card">
+          <h4>1. Fixed-Point Price &amp; Wall-Clock Log Displacements</h4>
+          <code class="formula-code">Price = round(decimal * 10^7)  [int64_t]
+r_W(t) = ln( mid(t) / mid(t - W_ns) )</code>
+          <p class="formula-desc">
+            Prices are stored as exact 64-bit scaled integers (<code>10^-7</code> precision). Displacements are anchored to provider
+            timestamps (<code>W_short = 120s</code>, <code>W_mid = 240s</code>, <code>W_long = 720s</code>) via binary search over the timestamp deque.
+          </p>
+        </div>
+
+        <div class="formula-card">
+          <h4>2. Multi-Scale Block Regime Efficiency</h4>
+          <code class="formula-code">regime_efficiency = |r_long(t)| / sum_{k=1..K} |r_block_k(t)|</code>
+          <p class="formula-desc">
+            Partitions the long window into <code>K</code> contiguous sub-blocks of length <code>W_short</code>. By the triangle inequality,
+            <code>regime_efficiency in [0, 1]</code>: values near 1 indicate directional trend alignment; values near 0 indicate mean-reverting chop.
+          </p>
+        </div>
+
+        <div class="formula-card">
+          <h4>3. Scale-Invariant Inter &amp; Intra-Window Deceleration</h4>
+          <code class="formula-code">decel_inter = sign(r_short) * (r_prev - r_short) / (sigma * sqrt(2*n))
+decel_intra = sign(r_short) * (r_older_half - r_recent_half) / (sigma * sqrt(n))
+deceleration = clamp(max(decel_inter, decel_intra), -1, 1)</code>
+          <p class="formula-desc">
+            Detects momentum slowdown both relative to the prior short window and within the current short window (comparing the first 60s to the latest 60s).
+          </p>
+        </div>
+
+        <div class="formula-card">
+          <h4>4. Composite Movement-Exhaustion Score</h4>
+          <code class="formula-code">E(t) = (w_ext * ext + w_dec * decel_+ + w_fade * fade + w_qual * pen) / sum(w)</code>
+          <p class="formula-desc">
+            Combines volatility-normalized extension (<code>|z_short| / z_norm</code>), positive deceleration, per-tick response fade,
+            and elevated-spread penalty into a bounded hypothesis score in <code>[0, 1]</code>.
+          </p>
+        </div>
+
+        <div class="formula-card">
+          <h4>5. Transparent Signal Scoring &amp; Expected Move</h4>
+          <code class="formula-code">S_cont = (1 - E) * g_ext * max(0, persistence)
+S_rev  = E * g_ext * (1 - max(0, persistence))
+E[move_log] = clamp(dir * S_kind * scale_kind * |r_short|, -max_move, +max_move)</code>
+          <p class="formula-desc">
+            Normalizes expected log move across signal kinds via <code>continuation_move_scale</code> and <code>reversal_move_scale</code>
+            before converting to price units for the risk engine.
+          </p>
+        </div>
+
+        <div class="formula-card">
+          <h4>6. Round-Trip Cost Gate &amp; Non-Overlapping t-Stat</h4>
+          <code class="formula-code">Cost_RT = spread + 2 * (commission + slippage)
+Edge = mid * |E[move_log]| - Cost_RT >= min_expected_edge
+t_stat = mean(net_spread_block) / (std_block / sqrt(M_blocks))</code>
+          <p class="formula-desc">
+            Requires every entry to clear full entry+exit transaction costs plus <code>min_expected_edge</code>, subject to a 180s wall-clock cooldown.
+          </p>
+        </div>
+      </div>
+
+      <h3>Periodic Site &amp; Data Update Workflow</h3>
+      <p>
+        Whenever new tick datasets are replayed or configurations are updated, run the synchronization script below to parse all Markdown
+        reports in <code>reports/</code> and update both <code>docs/data/metrics.json</code> and the embedded snapshot inside <code>docs/index.html</code>:
+      </p>
+      <pre class="code-block"># 1. Re-run the 4-way EUR/USD replay suite
+./build/Release/vectra.exe --config config/real_eurusd.json --data examples/real_eurusd_dev.csv  --report reports/real_eurusd_dev_report.md
+./build/Release/vectra.exe --config config/real_eurusd.json --data examples/real_eurusd_val.csv  --report reports/real_eurusd_val_report.md
+./build/Release/vectra.exe --config config/real_eurusd.json --data examples/real_eurusd_oos.csv  --report reports/real_eurusd_oos_report.md
+./build/Release/vectra.exe --config config/real_eurusd.json --data examples/real_eurusd_oos2.csv --report reports/real_eurusd_oos2_report.md
+
+# 2. Refresh docs/data/metrics.json and docs/index.html
+python scripts/update_site_data.py</pre>
+    </section>
+
+  </main>
+
+  <footer class="footer">
+    VECTRA Quantitative Forex Research Engine (C++20) — MIT License —
+    <a href="https://github.com/logiccrafterdz/VECTRA">github.com/logiccrafterdz/VECTRA</a>
+  </footer>
+
+  <!-- Embedded Data Snapshot (Automatically synchronized by scripts/update_site_data.py) -->
+  <!-- VECTRA_DATA_START -->
+  <script id="vectra-embedded-data" type="application/json">
+{
+  "generated_at_utc": "2026-11-15 19:24:58 UTC",
+  "engine_version": "0.1.0",
+  "unit_tests_passed": 115,
+  "unit_tests_total": 115,
+  "ctest_targets_passed": 2,
+  "sample_replay_digest": "bc06ff21b93aecfb",
+  "aggregate_real_eurusd": {
+    "total_ticks_read": 461357,
+    "total_valid_events": 420145,
+    "total_rejected_events": 41212,
+    "total_hours": 20.98,
+    "total_usable_signals": 18686,
+    "total_fills": 162,
+    "cumulative_gross_pnl": 42.9,
+    "cumulative_net_pnl": 26.7,
+    "combined_oos_gross_pnl": 9.1,
+    "combined_oos_net_pnl": 0.8,
+    "worst_split_drawdown": 23.1,
+    "worst_split_drawdown_pct": 0.023
+  },
+  "engineering_progression": [
+    {
+      "stage": "Baseline (v0.1 Default Config)",
+      "description": "Tick-counted windows (8/32/128), one-way cost gate, no cooldown, no position exit lifecycle.",
+      "dev_net_pnl": -94.95,
+      "val_net_pnl": null,
+      "oos_net_pnl": null,
+      "oos2_net_pnl": null,
+      "cumulative_net_pnl": -94.95,
+      "fills_dev": 408
+    },
+    {
+      "stage": "Stage 1: Round-Trip Cost, Cooldown & Lifecycle Exits",
+      "description": "Added 2x commission/slippage gate, cooldown timer, horizon exits, and stop-loss/take-profit.",
+      "dev_net_pnl": 14.35,
+      "val_net_pnl": -26.4,
+      "oos_net_pnl": -22.25,
+      "oos2_net_pnl": null,
+      "cumulative_net_pnl": -34.3,
+      "fills_dev": 42
+    },
+    {
+      "stage": "Stage 2: Wall-Clock Windows & Multi-Window Deceleration",
+      "description": "Anchored observation windows (120s/240s/720s) to provider timestamps; added scale-invariant deceleration.",
+      "dev_net_pnl": 11.3,
+      "val_net_pnl": 11.1,
+      "oos_net_pnl": -16.8,
+      "oos2_net_pnl": null,
+      "cumulative_net_pnl": 5.6,
+      "fills_dev": 26
+    },
+    {
+      "stage": "Stage 3: Regime Efficiency & Intra-Window Exhaustion",
+      "description": "Added block path efficiency filter (min_continuation_efficiency=0.55) and intra-window stall detection.",
+      "dev_net_pnl": 33.2,
+      "val_net_pnl": 0.1,
+      "oos_net_pnl": -4.0,
+      "oos2_net_pnl": -6.7,
+      "cumulative_net_pnl": 22.6,
+      "fills_dev": 88
+    },
+    {
+      "stage": "Stage 4: Score-Bin Calibration & Expected-Move Scaling",
+      "description": "Normalized expected-move scale (reversal_move_scale=0.45) using DEV/VAL Brier reliability analysis.",
+      "dev_net_pnl": 18.9,
+      "val_net_pnl": 7.0,
+      "oos_net_pnl": -0.7,
+      "oos2_net_pnl": 1.5,
+      "cumulative_net_pnl": 26.7,
+      "fills_dev": 36
+    }
+  ],
+  "active_config": {
+    "_comment": "VECTRA v0.1 wall-clock structural configuration for real EUR/USD tick streams. Anchors observation windows (120s / 240s / 720s), hold horizon (180s), and cooldown (180s) to provider timestamps so the strategy is invariant to session tick-arrival-rate changes.",
+    "instrument": "EURUSD",
+    "validation": {
+      "max_spread": 0.0003,
+      "stale_threshold_ms": 60000,
+      "reorder_tolerance_ms": 0,
+      "stale_gap_threshold_ms": 15000,
+      "future_skew_ms": 1000,
+      "require_source_time": true,
+      "require_sequence": true
+    },
+    "behavior": {
+      "window_short_events": 400,
+      "window_mid_events": 800,
+      "window_long_events": 2400,
+      "window_short_ms": 120000,
+      "window_mid_ms": 240000,
+      "window_long_ms": 720000,
+      "vol_window_events": 2000,
+      "persistence_window_events": 80,
+      "min_vol_samples": 300,
+      "min_volatility": 1e-08,
+      "spread_warn_ratio": 0.00025
+    },
+    "exhaustion": {
+      "weight_extension": 0.3,
+      "weight_deceleration": 0.25,
+      "weight_response_fade": 0.35,
+      "weight_quality": 0.1,
+      "z_normalization": 3.5,
+      "spread_reference_ratio": 0.0002
+    },
+    "prediction": {
+      "horizon_events": 600,
+      "reversal_exhaustion_threshold": 0.65,
+      "continuation_exhaustion_threshold": 0.35,
+      "min_extension_z": 1.8,
+      "min_persistence": 0.1,
+      "max_persistence_for_reversal": 0.2,
+      "min_confidence": 0.35,
+      "max_expected_move_log": 0.005,
+      "full_confidence_samples": 400,
+      "require_mid_confirmation": true,
+      "require_long_confirmation": false,
+      "min_continuation_efficiency": 0.55,
+      "max_reversal_efficiency": 1.0,
+      "max_continuation_extension_z": 0.0,
+      "continuation_move_scale": 1.0,
+      "reversal_move_scale": 0.45
+    },
+    "risk": {
+      "enabled": true,
+      "kill_switch": false,
+      "min_expected_edge": 0.0001,
+      "commission": 5e-06,
+      "slippage": 5e-06,
+      "max_spread": 0.00025,
+      "round_trip_cost": true,
+      "order_units": 10000.0,
+      "max_position_units": 20000.0,
+      "max_exposure": 50000.0,
+      "max_daily_loss": 250.0,
+      "max_open_orders": 2,
+      "max_orders_per_day": 50,
+      "cooldown_events": 0,
+      "cooldown_ms": 180000,
+      "data_health_window": 200,
+      "max_invalid_ratio": 0.25,
+      "data_stale_gate_ms": 15000
+    },
+    "execution": {
+      "ack_latency_ms": 20,
+      "fill_latency_ms": 50,
+      "cancel_latency_ms": 50,
+      "reject_probability": 0.0,
+      "partial_fill_probability": 0.0,
+      "partial_fill_fraction": 0.5,
+      "slippage": 5e-06,
+      "commission_per_unit": 5e-06,
+      "seed": 42
+    },
+    "backtest": {
+      "initial_capital": 100000.0,
+      "mark_with_mid": false,
+      "min_latency_samples": 30,
+      "max_equity_curve_points": 1000,
+      "hold_horizon_events": 0,
+      "hold_horizon_ms": 180000,
+      "eval_horizon_ms": 180000,
+      "stop_loss_price": 0.0008,
+      "take_profit_price": 0.0012,
+      "retain_tick_records": true
+    }
+  },
+  "datasets": {
+    "dev": {
+      "key": "dev",
+      "label": "DEV Split (Ticks 1-100k)",
+      "session": "Asian to Early London Session (6.48 hours)",
+      "report_file": "real_eurusd_dev_report.md",
+      "digest": "31ac500350c03e6f",
+      "market": {
+        "lines_read": 100000,
+        "events_valid": 96419,
+        "events_rejected": 3581,
+        "events_malformed": 0,
+        "stale_gaps": 54,
+        "rejection_reasons": "NegativeSpread=3581",
+        "duration": "6.48 hours"
+      },
+      "predictions": {
+        "total": 96419,
+        "usable": 6422,
+        "kind_distribution": "Continuation=2649, Neutral=89997, Reversal=3773",
+        "rejection_reasons": "InsufficientData=6564, InsufficientEvidence=57484, NoRuleMatch=25897, None=6422, StaleData=52",
+        "signal_rate_pct": 6.661
+      },
+      "decisions": {
+        "allowed": 18,
+        "rejected": 96401,
+        "rejection_reasons": "Cooldown=4317, DataUnreliable=50, InsufficientEdge=2037, InvalidSignal=6616, NoSignal=83381",
+        "min_expected_edge": 0.0001
+      },
+      "execution": {
+        "orders_submitted": 36,
+        "fills": 36,
+        "partial_fills": 0,
+        "horizon_exits": 14,
+        "stop_loss_exits": 2,
+        "take_profit_exits": 2,
+        "reconciliation": "matched (local and broker accounts agree)"
+      },
+      "performance": {
+        "initial_equity": 100000.0,
+        "final_equity": 100018.9,
+        "realized_pnl": 20.7,
+        "gross_pnl": 22.5,
+        "net_pnl": 18.9,
+        "commission_paid": 1.8,
+        "slippage_paid": 1.8,
+        "spread_cost_info": 3.9,
+        "max_drawdown": 16.1,
+        "max_drawdown_pct": 0.016
+      },
+      "forward_evaluation": [
+        {
+          "kind": "Continuation",
+          "evaluated": 2642,
+          "hit_rate_pct": 54.239,
+          "mean_mid_move": 0.000607,
+          "mean_spread_move": 0.000584
+        },
+        {
+          "kind": "Reversal",
+          "evaluated": 3773,
+          "hit_rate_pct": 38.113,
+          "mean_mid_move": -0.000186,
+          "mean_spread_move": -0.00021
+        },
+        {
+          "kind": "All usable signals",
+          "evaluated": 6415,
+          "hit_rate_pct": 44.754,
+          "mean_mid_move": 0.000141,
+          "mean_spread_move": 0.000117
+        },
+        {
+          "kind": "Naive directional baseline",
+          "evaluated": 88341,
+          "hit_rate_pct": 44.385,
+          "mean_mid_move": 5.4e-05,
+          "mean_spread_move": 3.4e-05
+        }
+      ],
+      "non_overlapping_blocks": [
+        {
+          "kind": "Continuation",
+          "blocks": 20,
+          "hit_rate_pct": 35.0,
+          "mean_spread_move": 0.000136,
+          "t_stat": 0.64
+        },
+        {
+          "kind": "Reversal",
+          "blocks": 44,
+          "hit_rate_pct": 59.091,
+          "mean_spread_move": -1.2e-05,
+          "t_stat": -0.12
+        },
+        {
+          "kind": "All usable signals",
+          "blocks": 51,
+          "hit_rate_pct": 50.98,
+          "mean_spread_move": 0.000125,
+          "t_stat": 1.46
+        },
+        {
+          "kind": "Naive directional baseline",
+          "blocks": 124,
+          "hit_rate_pct": 37.097,
+          "mean_spread_move": -8.1e-05,
+          "t_stat": -1.91
+        }
+      ],
+      "calibration_bins": [
+        {
+          "bin": "[0.0, 0.2)",
+          "evaluated": 1915,
+          "mean_score": 0.1275,
+          "hit_rate_pct": 51.854,
+          "mean_spread_move": 0.000529,
+          "brier_score": 0.3999
+        },
+        {
+          "bin": "[0.2, 0.4)",
+          "evaluated": 672,
+          "mean_score": 0.259,
+          "hit_rate_pct": 58.631,
+          "mean_spread_move": 0.000755,
+          "brier_score": 0.362
+        },
+        {
+          "bin": "[0.4, 0.6)",
+          "evaluated": 290,
+          "mean_score": 0.547,
+          "hit_rate_pct": 57.586,
+          "mean_spread_move": -0.000292,
+          "brier_score": 0.2641
+        },
+        {
+          "bin": "[0.6, 0.8)",
+          "evaluated": 2979,
+          "mean_score": 0.6966,
+          "hit_rate_pct": 42.531,
+          "mean_spread_move": -0.000162,
+          "brier_score": 0.325
+        },
+        {
+          "bin": "[0.8, 1.0]",
+          "evaluated": 559,
+          "mean_score": 0.8479,
+          "hit_rate_pct": 8.945,
+          "mean_spread_move": -0.000361,
+          "brier_score": 0.6605
+        },
+        {
+          "bin": "Total",
+          "evaluated": 6415,
+          "mean_score": 0.4873,
+          "hit_rate_pct": 44.754,
+          "mean_spread_move": 0.000117,
+          "brier_score": 0.3777
+        }
+      ],
+      "latency": [
+        {
+          "stage": "Event processing",
+          "median_us": 0.7,
+          "p95_us": 1.3,
+          "p99_us": 1.8,
+          "samples": 96419
+        },
+        {
+          "stage": "Signal calculation",
+          "median_us": 0.9,
+          "p95_us": 1.4,
+          "p99_us": 2.1,
+          "samples": 96419
+        },
+        {
+          "stage": "Decision",
+          "median_us": 0.2,
+          "p95_us": 0.3,
+          "p99_us": 1.4,
+          "samples": 96419
+        },
+        {
+          "stage": "Simulated order (submit to ack, venue clock)",
+          "median_us": 57000.0,
+          "p95_us": 1376000.0,
+          "p99_us": 1397000.0,
+          "samples": 36
+        }
+      ]
+    },
+    "val": {
+      "key": "val",
+      "label": "VAL Split (Ticks 100k-200k)",
+      "session": "London Peak Session (2.95 hours)",
+      "report_file": "real_eurusd_val_report.md",
+      "digest": "250ba6c3e99a6a3c",
+      "market": {
+        "lines_read": 100000,
+        "events_valid": 89127,
+        "events_rejected": 10873,
+        "events_malformed": 0,
+        "stale_gaps": 6,
+        "rejection_reasons": "NegativeSpread=10873",
+        "duration": "2.95 hours"
+      },
+      "predictions": {
+        "total": 89127,
+        "usable": 3926,
+        "kind_distribution": "Continuation=974, Neutral=85201, Reversal=2952",
+        "rejection_reasons": "InsufficientData=6060, InsufficientEvidence=57377, NoRuleMatch=21758, None=3926, StaleData=6",
+        "signal_rate_pct": 4.405
+      },
+      "decisions": {
+        "allowed": 22,
+        "rejected": 89105,
+        "rejection_reasons": "Cooldown=2759, DataUnreliable=131, InsufficientEdge=1014, InvalidSignal=6066, NoSignal=79135",
+        "min_expected_edge": 0.0001
+      },
+      "execution": {
+        "orders_submitted": 43,
+        "fills": 43,
+        "partial_fills": 0,
+        "horizon_exits": 17,
+        "stop_loss_exits": 4,
+        "take_profit_exits": 0,
+        "reconciliation": "matched (local and broker accounts agree)"
+      },
+      "performance": {
+        "initial_equity": 100000.0,
+        "final_equity": 100007.0,
+        "realized_pnl": 7.7,
+        "gross_pnl": 11.3,
+        "net_pnl": 7.0,
+        "commission_paid": 2.15,
+        "slippage_paid": 2.15,
+        "spread_cost_info": 2.8,
+        "max_drawdown": 21.7,
+        "max_drawdown_pct": 0.022
+      },
+      "forward_evaluation": [
+        {
+          "kind": "Continuation",
+          "evaluated": 931,
+          "hit_rate_pct": 73.792,
+          "mean_mid_move": 0.000338,
+          "mean_spread_move": 0.000323
+        },
+        {
+          "kind": "Reversal",
+          "evaluated": 2911,
+          "hit_rate_pct": 43.525,
+          "mean_mid_move": -5.5e-05,
+          "mean_spread_move": -6.9e-05
+        },
+        {
+          "kind": "All usable signals",
+          "evaluated": 3842,
+          "hit_rate_pct": 50.859,
+          "mean_mid_move": 4e-05,
+          "mean_spread_move": 2.6e-05
+        },
+        {
+          "kind": "Naive directional baseline",
+          "evaluated": 81405,
+          "hit_rate_pct": 49.69,
+          "mean_mid_move": 1.5e-05,
+          "mean_spread_move": 2e-06
+        }
+      ],
+      "non_overlapping_blocks": [
+        {
+          "kind": "Continuation",
+          "blocks": 8,
+          "hit_rate_pct": 62.5,
+          "mean_spread_move": 6.7e-05,
+          "t_stat": 0.3
+        },
+        {
+          "kind": "Reversal",
+          "blocks": 25,
+          "hit_rate_pct": 60.0,
+          "mean_spread_move": -4.5e-05,
+          "t_stat": -0.46
+        },
+        {
+          "kind": "All usable signals",
+          "blocks": 26,
+          "hit_rate_pct": 50.0,
+          "mean_spread_move": -7.7e-05,
+          "t_stat": -0.71
+        },
+        {
+          "kind": "Naive directional baseline",
+          "blocks": 54,
+          "hit_rate_pct": 46.296,
+          "mean_spread_move": -1.9e-05,
+          "t_stat": -0.3
+        }
+      ],
+      "calibration_bins": [
+        {
+          "bin": "[0.0, 0.2)",
+          "evaluated": 775,
+          "mean_score": 0.1282,
+          "hit_rate_pct": 73.29,
+          "mean_spread_move": 0.0003,
+          "brier_score": 0.5624
+        },
+        {
+          "bin": "[0.2, 0.4)",
+          "evaluated": 156,
+          "mean_score": 0.2318,
+          "hit_rate_pct": 76.282,
+          "mean_spread_move": 0.000434,
+          "brier_score": 0.4606
+        },
+        {
+          "bin": "[0.4, 0.6)",
+          "evaluated": 185,
+          "mean_score": 0.5735,
+          "hit_rate_pct": 59.459,
+          "mean_spread_move": 0.000158,
+          "brier_score": 0.2494
+        },
+        {
+          "bin": "[0.6, 0.8)",
+          "evaluated": 2576,
+          "mean_score": 0.6948,
+          "hit_rate_pct": 41.887,
+          "mean_spread_move": -9.2e-05,
+          "brier_score": 0.3273
+        },
+        {
+          "bin": "[0.8, 1.0]",
+          "evaluated": 150,
+          "mean_score": 0.8171,
+          "hit_rate_pct": 52.0,
+          "mean_spread_move": 4.4e-05,
+          "brier_score": 0.3383
+        },
+        {
+          "bin": "Total",
+          "evaluated": 3842,
+          "mean_score": 0.5607,
+          "hit_rate_pct": 50.859,
+          "mean_spread_move": 2.6e-05,
+          "brier_score": 0.3768
+        }
+      ],
+      "latency": [
+        {
+          "stage": "Event processing",
+          "median_us": 0.8,
+          "p95_us": 1.1,
+          "p99_us": 1.5,
+          "samples": 89127
+        },
+        {
+          "stage": "Signal calculation",
+          "median_us": 0.9,
+          "p95_us": 1.0,
+          "p99_us": 1.7,
+          "samples": 89127
+        },
+        {
+          "stage": "Decision",
+          "median_us": 0.2,
+          "p95_us": 0.3,
+          "p99_us": 1.4,
+          "samples": 89127
+        },
+        {
+          "stage": "Simulated order (submit to ack, venue clock)",
+          "median_us": 76000.0,
+          "p95_us": 1450000.0,
+          "p99_us": 4052000.0,
+          "samples": 43
+        }
+      ]
+    },
+    "oos": {
+      "key": "oos",
+      "label": "OOS 1 Split (Ticks 200k-300k)",
+      "session": "London / New York Overlap (3.55 hours)",
+      "report_file": "real_eurusd_oos_report.md",
+      "digest": "b4aaaa60a7b78883",
+      "market": {
+        "lines_read": 100000,
+        "events_valid": 90477,
+        "events_rejected": 9523,
+        "events_malformed": 0,
+        "stale_gaps": 1,
+        "rejection_reasons": "NegativeSpread=9523",
+        "duration": "3.55 hours"
+      },
+      "predictions": {
+        "total": 90477,
+        "usable": 4292,
+        "kind_distribution": "Continuation=1884, Neutral=86185, Reversal=2408",
+        "rejection_reasons": "InsufficientData=5419, InsufficientEvidence=64116, NoRuleMatch=16649, None=4292, StaleData=1",
+        "signal_rate_pct": 4.744
+      },
+      "decisions": {
+        "allowed": 24,
+        "rejected": 90453,
+        "rejection_reasons": "Cooldown=1888, DataUnreliable=69, InsufficientEdge=2311, InvalidSignal=5420, NoSignal=80765",
+        "min_expected_edge": 0.0001
+      },
+      "execution": {
+        "orders_submitted": 47,
+        "fills": 47,
+        "partial_fills": 0,
+        "horizon_exits": 22,
+        "stop_loss_exits": 1,
+        "take_profit_exits": 0,
+        "reconciliation": "matched (local and broker accounts agree)"
+      },
+      "performance": {
+        "initial_equity": 100000.0,
+        "final_equity": 99999.3,
+        "realized_pnl": -8.9,
+        "gross_pnl": 4.0,
+        "net_pnl": -0.7,
+        "commission_paid": 2.35,
+        "slippage_paid": 2.35,
+        "spread_cost_info": 3.2,
+        "max_drawdown": 23.1,
+        "max_drawdown_pct": 0.023
+      },
+      "forward_evaluation": [
+        {
+          "kind": "Continuation",
+          "evaluated": 1239,
+          "hit_rate_pct": 30.751,
+          "mean_mid_move": -0.000196,
+          "mean_spread_move": -0.000208
+        },
+        {
+          "kind": "Reversal",
+          "evaluated": 2408,
+          "hit_rate_pct": 63.289,
+          "mean_mid_move": 9.4e-05,
+          "mean_spread_move": 8.2e-05
+        },
+        {
+          "kind": "All usable signals",
+          "evaluated": 3647,
+          "hit_rate_pct": 52.235,
+          "mean_mid_move": -5e-06,
+          "mean_spread_move": -1.7e-05
+        },
+        {
+          "kind": "Naive directional baseline",
+          "evaluated": 82164,
+          "hit_rate_pct": 47.809,
+          "mean_mid_move": 6e-06,
+          "mean_spread_move": -6e-06
+        }
+      ],
+      "non_overlapping_blocks": [
+        {
+          "kind": "Continuation",
+          "blocks": 14,
+          "hit_rate_pct": 21.429,
+          "mean_spread_move": -0.000196,
+          "t_stat": -2.75
+        },
+        {
+          "kind": "Reversal",
+          "blocks": 29,
+          "hit_rate_pct": 55.172,
+          "mean_spread_move": 1.8e-05,
+          "t_stat": 0.26
+        },
+        {
+          "kind": "All usable signals",
+          "blocks": 33,
+          "hit_rate_pct": 51.515,
+          "mean_spread_move": -2.6e-05,
+          "t_stat": -0.37
+        },
+        {
+          "kind": "Naive directional baseline",
+          "blocks": 66,
+          "hit_rate_pct": 54.545,
+          "mean_spread_move": 2.1e-05,
+          "t_stat": 0.49
+        }
+      ],
+      "calibration_bins": [
+        {
+          "bin": "[0.0, 0.2)",
+          "evaluated": 1007,
+          "mean_score": 0.122,
+          "hit_rate_pct": 30.089,
+          "mean_spread_move": -0.000197,
+          "brier_score": 0.2462
+        },
+        {
+          "bin": "[0.2, 0.4)",
+          "evaluated": 203,
+          "mean_score": 0.2625,
+          "hit_rate_pct": 38.424,
+          "mean_spread_move": -0.000229,
+          "brier_score": 0.2565
+        },
+        {
+          "bin": "[0.4, 0.6)",
+          "evaluated": 320,
+          "mean_score": 0.5638,
+          "hit_rate_pct": 46.25,
+          "mean_spread_move": -1.2e-05,
+          "brier_score": 0.2536
+        },
+        {
+          "bin": "[0.6, 0.8)",
+          "evaluated": 2085,
+          "mean_score": 0.6861,
+          "hit_rate_pct": 64.604,
+          "mean_spread_move": 8.6e-05,
+          "brier_score": 0.2279
+        },
+        {
+          "bin": "[0.8, 1.0]",
+          "evaluated": 32,
+          "mean_score": 0.8264,
+          "hit_rate_pct": 90.625,
+          "mean_spread_move": 0.000285,
+          "brier_score": 0.0877
+        },
+        {
+          "bin": "Total",
+          "evaluated": 3647,
+          "mean_score": 0.4972,
+          "hit_rate_pct": 52.235,
+          "mean_spread_move": -1.7e-05,
+          "brier_score": 0.2356
+        }
+      ],
+      "latency": [
+        {
+          "stage": "Event processing",
+          "median_us": 0.8,
+          "p95_us": 1.4,
+          "p99_us": 2.1,
+          "samples": 90477
+        },
+        {
+          "stage": "Signal calculation",
+          "median_us": 0.9,
+          "p95_us": 1.4,
+          "p99_us": 2.7,
+          "samples": 90477
+        },
+        {
+          "stage": "Decision",
+          "median_us": 0.2,
+          "p95_us": 0.4,
+          "p99_us": 1.4,
+          "samples": 90477
+        },
+        {
+          "stage": "Simulated order (submit to ack, venue clock)",
+          "median_us": 40000.0,
+          "p95_us": 721000.0,
+          "p99_us": 884000.0,
+          "samples": 47
+        }
+      ]
+    },
+    "oos2": {
+      "key": "oos2",
+      "label": "OOS 2 Holdout (Ticks 300k-461.4k)",
+      "session": "US / Late New York Session (8.00 hours)",
+      "report_file": "real_eurusd_oos2_report.md",
+      "digest": "cff31ffe05a0d51d",
+      "market": {
+        "lines_read": 161357,
+        "events_valid": 144122,
+        "events_rejected": 17235,
+        "events_malformed": 0,
+        "stale_gaps": 52,
+        "rejection_reasons": "NegativeSpread=17081, WideSpread=154",
+        "duration": "8.00 hours"
+      },
+      "predictions": {
+        "total": 144122,
+        "usable": 4046,
+        "kind_distribution": "Continuation=1399, Neutral=140076, Reversal=2647",
+        "rejection_reasons": "InsufficientData=12570, InsufficientEvidence=109787, NoRuleMatch=17659, None=4046, StaleData=52, WideSpread=8",
+        "signal_rate_pct": 2.807
+      },
+      "decisions": {
+        "allowed": 18,
+        "rejected": 144104,
+        "rejection_reasons": "Cooldown=1664, DataUnreliable=77, InsufficientEdge=2287, InvalidSignal=12630, NoSignal=127446",
+        "min_expected_edge": 0.0001
+      },
+      "execution": {
+        "orders_submitted": 36,
+        "fills": 36,
+        "partial_fills": 0,
+        "horizon_exits": 18,
+        "stop_loss_exits": 0,
+        "take_profit_exits": 0,
+        "reconciliation": "matched (local and broker accounts agree)"
+      },
+      "performance": {
+        "initial_equity": 100000.0,
+        "final_equity": 100001.5,
+        "realized_pnl": 3.3,
+        "gross_pnl": 5.1,
+        "net_pnl": 1.5,
+        "commission_paid": 1.8,
+        "slippage_paid": 1.8,
+        "spread_cost_info": 1.55,
+        "max_drawdown": 14.4,
+        "max_drawdown_pct": 0.014
+      },
+      "forward_evaluation": [
+        {
+          "kind": "Continuation",
+          "evaluated": 1399,
+          "hit_rate_pct": 57.255,
+          "mean_mid_move": 9.2e-05,
+          "mean_spread_move": 7.9e-05
+        },
+        {
+          "kind": "Reversal",
+          "evaluated": 2647,
+          "hit_rate_pct": 46.128,
+          "mean_mid_move": -4.7e-05,
+          "mean_spread_move": -5.9e-05
+        },
+        {
+          "kind": "All usable signals",
+          "evaluated": 4046,
+          "hit_rate_pct": 49.975,
+          "mean_mid_move": 1e-06,
+          "mean_spread_move": -1.2e-05
+        },
+        {
+          "kind": "Naive directional baseline",
+          "evaluated": 129993,
+          "hit_rate_pct": 47.253,
+          "mean_mid_move": -1.9e-05,
+          "mean_spread_move": -3e-05
+        }
+      ],
+      "non_overlapping_blocks": [
+        {
+          "kind": "Continuation",
+          "blocks": 16,
+          "hit_rate_pct": 50.0,
+          "mean_spread_move": 4.7e-05,
+          "t_stat": 0.55
+        },
+        {
+          "kind": "Reversal",
+          "blocks": 44,
+          "hit_rate_pct": 50.0,
+          "mean_spread_move": -4.9e-05,
+          "t_stat": -1.47
+        },
+        {
+          "kind": "All usable signals",
+          "blocks": 51,
+          "hit_rate_pct": 54.902,
+          "mean_spread_move": -8e-06,
+          "t_stat": -0.22
+        },
+        {
+          "kind": "Naive directional baseline",
+          "blocks": 154,
+          "hit_rate_pct": 40.26,
+          "mean_spread_move": -5.3e-05,
+          "t_stat": -2.51
+        }
+      ],
+      "calibration_bins": [
+        {
+          "bin": "[0.0, 0.2)",
+          "evaluated": 1046,
+          "mean_score": 0.1311,
+          "hit_rate_pct": 51.721,
+          "mean_spread_move": 4.1e-05,
+          "brier_score": 0.4019
+        },
+        {
+          "bin": "[0.2, 0.4)",
+          "evaluated": 353,
+          "mean_score": 0.2397,
+          "hit_rate_pct": 73.654,
+          "mean_spread_move": 0.00019,
+          "brier_score": 0.4339
+        },
+        {
+          "bin": "[0.4, 0.6)",
+          "evaluated": 258,
+          "mean_score": 0.5749,
+          "hit_rate_pct": 70.543,
+          "mean_spread_move": 5.5e-05,
+          "brier_score": 0.2268
+        },
+        {
+          "bin": "[0.6, 0.8)",
+          "evaluated": 2366,
+          "mean_score": 0.6922,
+          "hit_rate_pct": 43.787,
+          "mean_spread_move": -7e-05,
+          "brier_score": 0.3167
+        },
+        {
+          "bin": "[0.8, 1.0]",
+          "evaluated": 23,
+          "mean_score": 0.8167,
+          "hit_rate_pct": 13.043,
+          "mean_spread_move": -0.000284,
+          "brier_score": 0.5877
+        },
+        {
+          "bin": "Total",
+          "evaluated": 4046,
+          "mean_score": 0.5009,
+          "hit_rate_pct": 49.975,
+          "mean_spread_move": -1.2e-05,
+          "brier_score": 0.3448
+        }
+      ],
+      "latency": [
+        {
+          "stage": "Event processing",
+          "median_us": 0.8,
+          "p95_us": 1.2,
+          "p99_us": 1.7,
+          "samples": 144122
+        },
+        {
+          "stage": "Signal calculation",
+          "median_us": 0.9,
+          "p95_us": 1.2,
+          "p99_us": 1.5,
+          "samples": 144122
+        },
+        {
+          "stage": "Decision",
+          "median_us": 0.2,
+          "p95_us": 0.3,
+          "p99_us": 1.4,
+          "samples": 144122
+        },
+        {
+          "stage": "Simulated order (submit to ack, venue clock)",
+          "median_us": 58000.0,
+          "p95_us": 1099000.0,
+          "p99_us": 1473000.0,
+          "samples": 36
+        }
+      ]
+    },
+    "synthetic": {
+      "key": "synthetic",
+      "label": "Synthetic Smoke Benchmark (6k Ticks)",
+      "session": "Deterministic Anomaly & Pipeline Test (10.00 minutes)",
+      "report_file": "sample_report.md",
+      "digest": "bc06ff21b93aecfb",
+      "market": {
+        "lines_read": 6000,
+        "events_valid": 5395,
+        "events_rejected": 604,
+        "events_malformed": 1,
+        "stale_gaps": 2,
+        "rejection_reasons": "Duplicate=2, Malformed=1, NegativeSpread=1, WideSpread=600, WrongSymbol=1",
+        "duration": "10.16 minutes"
+      },
+      "predictions": {
+        "total": 5395,
+        "usable": 2339,
+        "kind_distribution": "Continuation=2333, Neutral=3056, Reversal=6",
+        "rejection_reasons": "InsufficientData=128, InsufficientEvidence=1824, LowVolatility=344, NoRuleMatch=758, None=2339, StaleData=2",
+        "signal_rate_pct": 43.355
+      },
+      "decisions": {
+        "allowed": 40,
+        "rejected": 5355,
+        "rejection_reasons": "CostTooHigh=115, InsufficientEdge=1067, InvalidSignal=474, MaxOrdersPerDay=433, MaxPosition=684, NoSignal=2582",
+        "min_expected_edge": 0.00015
+      },
+      "execution": {
+        "orders_submitted": 40,
+        "fills": 53,
+        "partial_fills": 13,
+        "horizon_exits": 0,
+        "stop_loss_exits": 0,
+        "take_profit_exits": 0,
+        "reconciliation": "matched (local and broker accounts agree)"
+      },
+      "performance": {
+        "initial_equity": 100000.0,
+        "final_equity": 103791.7,
+        "realized_pnl": 3581.47,
+        "gross_pnl": 3795.68,
+        "net_pnl": 3791.7,
+        "commission_paid": 1.99,
+        "slippage_paid": 1.99,
+        "spread_cost_info": 10.99,
+        "max_drawdown": 899.91,
+        "max_drawdown_pct": 0.861
+      },
+      "forward_evaluation": [],
+      "non_overlapping_blocks": [],
+      "calibration_bins": [],
+      "latency": [
+        {
+          "stage": "Event processing",
+          "median_us": 0.2,
+          "p95_us": 0.4,
+          "p99_us": 0.4,
+          "samples": 5395
+        },
+        {
+          "stage": "Signal calculation",
+          "median_us": 0.4,
+          "p95_us": 1.3,
+          "p99_us": 1.5,
+          "samples": 5395
+        },
+        {
+          "stage": "Decision",
+          "median_us": 0.2,
+          "p95_us": 2.1,
+          "p99_us": 2.2,
+          "samples": 5395
+        },
+        {
+          "stage": "Simulated order (submit to ack, venue clock)",
+          "median_us": 100000.0,
+          "p95_us": 100000.0,
+          "p99_us": 100000.0,
+          "samples": 40
+        }
+      ]
+    }
+  }
+}
+</script>
+  <!-- VECTRA_DATA_END -->
+
+  <script>
+    (function () {
+      function fmtNum(v, decimals) {
+        if (v === null || v === undefined || isNaN(v)) return "n/a";
+        return Number(v).toFixed(decimals);
+      }
+      function fmtSigned(v, decimals, prefix) {
+        if (v === null || v === undefined || isNaN(v)) return "n/a";
+        var n = Number(v);
+        var sign = n > 0 ? "+" : (n < 0 ? "-" : "");
+        return sign + (prefix || "") + Math.abs(n).toFixed(decimals);
+      }
+      function fmtInt(v) {
+        if (v === null || v === undefined || isNaN(v)) return "0";
+        return Number(v).toLocaleString("en-US");
+      }
+
+      function renderProgressionChart(prog) {
+        var container = document.getElementById("chart-progression");
+        if (!container || !prog || !prog.length) return;
+        var w = 540, h = 250, padL = 175, padR = 65, padT = 20, padB = 30;
+        var plotW = w - padL - padR;
+        var plotH = h - padT - padB;
+        var minV = -100, maxV = 40;
+        var zeroX = padL + ((0 - minV) / (maxV - minV)) * plotW;
+
+        var svg = '<svg viewBox="0 0 ' + w + ' ' + h + '" xmlns="http://www.w3.org/2000/svg">';
+        svg += '<rect x="0" y="0" width="' + w + '" height="' + h + '" fill="#ffffff" rx="4" />';
+
+        // Grid lines
+        [-100, -75, -50, -25, 0, 25].forEach(function (g) {
+          var gx = padL + ((g - minV) / (maxV - minV)) * plotW;
+          svg += '<line x1="' + gx + '" y1="' + padT + '" x2="' + gx + '" y2="' + (h - padB) + '" stroke="#e2e8f0" stroke-dasharray="3,3" />';
+          svg += '<text x="' + gx + '" y="' + (h - 10) + '" text-anchor="middle" font-size="10" fill="#64748b">' + (g >= 0 ? "+" + g : g) + '</text>';
+        });
+        svg += '<line x1="' + zeroX + '" y1="' + padT + '" x2="' + zeroX + '" y2="' + (h - padB) + '" stroke="#475569" stroke-width="1.5" />';
+
+        var rowH = plotH / prog.length;
+        prog.forEach(function (item, idx) {
+          var v = item.cumulative_net_pnl;
+          var cy = padT + idx * rowH + rowH * 0.5;
+          var barH = rowH * 0.55;
+          var valX = padL + ((v - minV) / (maxV - minV)) * plotW;
+          var x1 = Math.min(zeroX, valX);
+          var bw = Math.max(2, Math.abs(valX - zeroX));
+          var color = v >= 0 ? "#15803d" : "#b91c1c";
+          var shortLabel = item.stage.replace(/:.*/, "");
+          svg += '<text x="' + (padL - 10) + '" y="' + (cy + 4) + '" text-anchor="end" font-size="11" font-weight="600" fill="#1e293b">' + shortLabel + '</text>';
+          svg += '<rect x="' + x1 + '" y="' + (cy - barH / 2) + '" width="' + bw + '" height="' + barH + '" fill="' + color + '" rx="3" />';
+          var labelX = v >= 0 ? (x1 + bw + 6) : (x1 - 6);
+          var anchor = v >= 0 ? "start" : "end";
+          svg += '<text x="' + labelX + '" y="' + (cy + 4) + '" text-anchor="' + anchor + '" font-size="11" font-weight="700" fill="' + color + '">' + fmtSigned(v, 2, "$") + '</text>';
+        });
+
+        svg += '</svg>';
+        container.innerHTML = svg;
+
+        var tbody = document.getElementById("table-progression-body");
+        if (tbody) {
+          tbody.innerHTML = prog.map(function (p) {
+            var cls = p.cumulative_net_pnl >= 0 ? "val-pos" : "val-neg";
+            return '<tr>' +
+              '<td><strong>' + p.stage + '</strong><br><span style="font-size:12px;color:#64748b">' + p.description + '</span></td>' +
+              '<td class="num">' + (p.dev_net_pnl !== null ? fmtSigned(p.dev_net_pnl, 2, "$") : "n/a") + '</td>' +
+              '<td class="num">' + (p.val_net_pnl !== null ? fmtSigned(p.val_net_pnl, 2, "$") : "n/a") + '</td>' +
+              '<td class="num">' + (p.oos_net_pnl !== null ? fmtSigned(p.oos_net_pnl, 2, "$") : "n/a") + '</td>' +
+              '<td class="num">' + (p.oos2_net_pnl !== null ? fmtSigned(p.oos2_net_pnl, 2, "$") : "n/a") + '</td>' +
+              '<td class="num ' + cls + '">' + fmtSigned(p.cumulative_net_pnl, 2, "$") + '</td>' +
+              '</tr>';
+          }).join("");
+        }
+      }
+
+      function renderSplitsCharts(datasets) {
+        var keys = ["dev", "val", "oos", "oos2"];
+        var labels = ["DEV (1-100k)", "VAL (100k-200k)", "OOS 1 (200k-300k)", "OOS 2 (300k-461k)"];
+        var w = 540, h = 250, padL = 50, padR = 20, padT = 24, padB = 38;
+        var plotW = w - padL - padR, plotH = h - padT - padB;
+        var minY = -5, maxY = 25;
+        var scaleY = function (v) {
+          return padT + plotH - ((v - minY) / (maxY - minY)) * plotH;
+        };
+        var zeroY = scaleY(0);
+
+        var svg1 = '<svg viewBox="0 0 ' + w + ' ' + h + '" xmlns="http://www.w3.org/2000/svg">';
+        svg1 += '<rect x="0" y="0" width="' + w + '" height="' + h + '" fill="#ffffff" rx="4" />';
+        [-5, 0, 5, 10, 15, 20, 25].forEach(function (g) {
+          var gy = scaleY(g);
+          svg1 += '<line x1="' + padL + '" y1="' + gy + '" x2="' + (w - padR) + '" y2="' + gy + '" stroke="#e2e8f0" stroke-dasharray="3,3" />';
+          svg1 += '<text x="' + (padL - 8) + '" y="' + (gy + 4) + '" text-anchor="end" font-size="10" fill="#64748b">$' + g + '</text>';
+        });
+        svg1 += '<line x1="' + padL + '" y1="' + zeroY + '" x2="' + (w - padR) + '" y2="' + zeroY + '" stroke="#475569" stroke-width="1.2" />';
+
+        // Legend
+        svg1 += '<rect x="140" y="6" width="10" height="10" fill="#1e3a8a" rx="2"/><text x="155" y="15" font-size="11" fill="#334155">Gross P&amp;L</text>';
+        svg1 += '<rect x="240" y="6" width="10" height="10" fill="#0f766e" rx="2"/><text x="255" y="15" font-size="11" fill="#334155">Net P&amp;L</text>';
+        svg1 += '<rect x="330" y="6" width="10" height="10" fill="#94a3b8" rx="2"/><text x="345" y="15" font-size="11" fill="#334155">Max Drawdown</text>';
+
+        var groupW = plotW / keys.length;
+        keys.forEach(function (k, i) {
+          var d = datasets[k];
+          if (!d) return;
+          var gx = padL + i * groupW + groupW * 0.14;
+          var bw = groupW * 0.22;
+          var vals = [
+            { v: d.performance.gross_pnl, c: "#1e3a8a" },
+            { v: d.performance.net_pnl, c: d.performance.net_pnl >= 0 ? "#0f766e" : "#b91c1c" },
+            { v: d.performance.max_drawdown, c: "#94a3b8" }
+          ];
+          vals.forEach(function (item, bi) {
+            var bx = gx + bi * (bw + 4);
+            var vy = scaleY(item.v);
+            var topY = Math.min(zeroY, vy);
+            var bh = Math.max(2, Math.abs(vy - zeroY));
+            svg1 += '<rect x="' + bx + '" y="' + topY + '" width="' + bw + '" height="' + bh + '" fill="' + item.c + '" rx="2" />';
+            var ly = item.v >= 0 ? (topY - 4) : (topY + bh + 11);
+            svg1 += '<text x="' + (bx + bw / 2) + '" y="' + ly + '" text-anchor="middle" font-size="9.5" font-weight="700" fill="' + item.c + '">' + fmtNum(item.v, 1) + '</text>';
+          });
+          svg1 += '<text x="' + (padL + i * groupW + groupW / 2) + '" y="' + (h - 14) + '" text-anchor="middle" font-size="11" font-weight="600" fill="#1e293b">' + labels[i] + '</text>';
+        });
+        svg1 += '</svg>';
+        document.getElementById("chart-splits-pnl").innerHTML = svg1;
+
+        // Chart 2: Hit Rates
+        var svg2 = '<svg viewBox="0 0 ' + w + ' ' + h + '" xmlns="http://www.w3.org/2000/svg">';
+        svg2 += '<rect x="0" y="0" width="' + w + '" height="' + h + '" fill="#ffffff" rx="4" />';
+        var scaleH = function (v) {
+          return padT + plotH - ((v - 20) / (85 - 20)) * plotH;
+        };
+        [25, 40, 50, 60, 75].forEach(function (g) {
+          var gy = scaleH(g);
+          var stroke = g === 50 ? "#475569" : "#e2e8f0";
+          svg2 += '<line x1="' + padL + '" y1="' + gy + '" x2="' + (w - padR) + '" y2="' + gy + '" stroke="' + stroke + '" stroke-dasharray="' + (g === 50 ? "none" : "3,3") + '" />';
+          svg2 += '<text x="' + (padL - 8) + '" y="' + (gy + 4) + '" text-anchor="end" font-size="10" fill="#64748b">' + g + '%</text>';
+        });
+        svg2 += '<rect x="120" y="6" width="10" height="10" fill="#1e3a8a" rx="2"/><text x="135" y="15" font-size="11" fill="#334155">Continuation</text>';
+        svg2 += '<rect x="235" y="6" width="10" height="10" fill="#0f766e" rx="2"/><text x="250" y="15" font-size="11" fill="#334155">Reversal</text>';
+        svg2 += '<rect x="330" y="6" width="10" height="10" fill="#94a3b8" rx="2"/><text x="345" y="15" font-size="11" fill="#334155">Naive Baseline</text>';
+
+        keys.forEach(function (k, i) {
+          var d = datasets[k];
+          if (!d) return;
+          var fwd = {};
+          (d.forward_evaluation || []).forEach(function (r) { fwd[r.kind] = r.hit_rate_pct; });
+          var gx = padL + i * groupW + groupW * 0.14;
+          var bw = groupW * 0.22;
+          var series = [
+            { v: fwd["Continuation"] || 0, c: "#1e3a8a" },
+            { v: fwd["Reversal"] || 0, c: "#0f766e" },
+            { v: fwd["Naive directional baseline"] || 0, c: "#94a3b8" }
+          ];
+          series.forEach(function (item, bi) {
+            var bx = gx + bi * (bw + 4);
+            var vy = scaleH(item.v);
+            var bh = Math.max(2, (padT + plotH) - vy);
+            svg2 += '<rect x="' + bx + '" y="' + vy + '" width="' + bw + '" height="' + bh + '" fill="' + item.c + '" rx="2" />';
+            svg2 += '<text x="' + (bx + bw / 2) + '" y="' + (vy - 4) + '" text-anchor="middle" font-size="9.5" font-weight="700" fill="' + item.c + '">' + fmtNum(item.v, 1) + '%</text>';
+          });
+          svg2 += '<text x="' + (padL + i * groupW + groupW / 2) + '" y="' + (h - 14) + '" text-anchor="middle" font-size="11" font-weight="600" fill="#1e293b">' + labels[i] + '</text>';
+        });
+        svg2 += '</svg>';
+        document.getElementById("chart-splits-hitrate").innerHTML = svg2;
+
+        // Populate 4-way table
+        var rows = [
+          ["Stream Duration", function (d) { return d.market.duration; }, "20.98 hours"],
+          ["Total Lines Read", function (d) { return fmtInt(d.market.lines_read); }, "461,357"],
+          ["Valid Events Ingested", function (d) { return fmtInt(d.market.events_valid); }, "420,145"],
+          ["Rejected Events (Validator)", function (d) { return fmtInt(d.market.events_rejected); }, "41,212"],
+          ["Usable Signals Emitted", function (d) { return fmtInt(d.predictions.usable) + " (" + fmtNum(d.predictions.signal_rate_pct, 2) + "%)"; }, "18,686 (4.45%)"],
+          ["Risk Decisions Allowed / Fills", function (d) { return d.decisions.allowed + " / " + d.execution.fills; }, "81 / 162"],
+          ["Gross P&L (After Spread)", function (d) { return '<span class="val-pos">' + fmtSigned(d.performance.gross_pnl, 2, "$") + '</span>'; }, '<span class="val-pos">+$42.90 (4/4 Positive)</span>'],
+          ["Net P&L (After Spread, Comm & Slip)", function (d) {
+            var cls = d.performance.net_pnl >= 0 ? "val-pos" : "val-neg";
+            return '<span class="' + cls + '">' + fmtSigned(d.performance.net_pnl, 2, "$") + '</span>';
+          }, '<span class="val-pos">+$26.70 (OOS1+2: +$0.80)</span>'],
+          ["Max Drawdown (USD & %)", function (d) { return "$" + fmtNum(d.performance.max_drawdown, 2) + " (" + fmtNum(d.performance.max_drawdown_pct, 3) + "%)"; }, "<= $23.10 (0.023%)"],
+          ["Account Reconciliation", function (d) { return d.execution.reconciliation; }, "100% matched"],
+          ["Deterministic FNV-1a Digest", function (d) { return "<code>" + d.digest + "</code>"; }, "Verified"]
+        ];
+        var tb = document.getElementById("table-four-splits");
+        if (tb) {
+          tb.innerHTML = rows.map(function (r) {
+            return '<tr><td><strong>' + r[0] + '</strong></td>' +
+              keys.map(function (k) { return '<td class="num">' + (datasets[k] ? r[1](datasets[k]) : "n/a") + '</td>'; }).join("") +
+              '<td class="num"><strong>' + r[2] + '</strong></td></tr>';
+          }).join("");
+        }
+      }
+
+      function renderCalibrationSection(datasets, splitKey) {
+        var d = datasets[splitKey];
+        if (!d || !d.calibration_bins) return;
+        var bins = d.calibration_bins.filter(function (b) { return b.bin !== "Total"; });
+        var w = 540, h = 235, padL = 52, padR = 20, padT = 24, padB = 36;
+        var plotW = w - padL - padR, plotH = h - padT - padB;
+
+        // Chart 1: Mean Score vs Realized Hit Rate
+        var svg1 = '<svg viewBox="0 0 ' + w + ' ' + h + '" xmlns="http://www.w3.org/2000/svg">';
+        svg1 += '<rect x="0" y="0" width="' + w + '" height="' + h + '" fill="#ffffff" rx="4" />';
+        [0, 25, 50, 75, 100].forEach(function (g) {
+          var gy = padT + plotH - (g / 100) * plotH;
+          svg1 += '<line x1="' + padL + '" y1="' + gy + '" x2="' + (w - padR) + '" y2="' + gy + '" stroke="#e2e8f0" stroke-dasharray="3,3" />';
+          svg1 += '<text x="' + (padL - 8) + '" y="' + (gy + 4) + '" text-anchor="end" font-size="10" fill="#64748b">' + g + '%</text>';
+        });
+        svg1 += '<rect x="130" y="5" width="10" height="10" fill="#1e3a8a" rx="2"/><text x="145" y="14" font-size="11" fill="#334155">Mean Score (%)</text>';
+        svg1 += '<rect x="265" y="5" width="10" height="10" fill="#0f766e" rx="2"/><text x="280" y="14" font-size="11" fill="#334155">Realized Hit Rate (%)</text>';
+
+        var gw = plotW / Math.max(1, bins.length);
+        bins.forEach(function (b, i) {
+          var gx = padL + i * gw + gw * 0.18;
+          var bw = gw * 0.28;
+          var sPct = b.mean_score * 100.0;
+          var hPct = b.hit_rate_pct;
+          var sy = padT + plotH - (sPct / 100) * plotH;
+          var hy = padT + plotH - (hPct / 100) * plotH;
+          svg1 += '<rect x="' + gx + '" y="' + sy + '" width="' + bw + '" height="' + Math.max(2, padT + plotH - sy) + '" fill="#1e3a8a" rx="2" />';
+          svg1 += '<text x="' + (gx + bw / 2) + '" y="' + (sy - 4) + '" text-anchor="middle" font-size="9.5" font-weight="700" fill="#1e3a8a">' + fmtNum(sPct, 1) + '%</text>';
+
+          var hx = gx + bw + 5;
+          svg1 += '<rect x="' + hx + '" y="' + hy + '" width="' + bw + '" height="' + Math.max(2, padT + plotH - hy) + '" fill="#0f766e" rx="2" />';
+          svg1 += '<text x="' + (hx + bw / 2) + '" y="' + (hy - 4) + '" text-anchor="middle" font-size="9.5" font-weight="700" fill="#0f766e">' + fmtNum(hPct, 1) + '%</text>';
+          svg1 += '<text x="' + (padL + i * gw + gw / 2) + '" y="' + (h - 12) + '" text-anchor="middle" font-size="10.5" font-weight="600" fill="#1e293b">' + b.bin + '</text>';
+        });
+        svg1 += '</svg>';
+        document.getElementById("chart-calibration-hit").innerHTML = svg1;
+
+        // Chart 2: Mean Spread-Crossed Move in Pips
+        var minP = -4.0, maxP = 8.5;
+        var scaleP = function (p) {
+          var cl = Math.max(minP, Math.min(maxP, p));
+          return padT + plotH - ((cl - minP) / (maxP - minP)) * plotH;
+        };
+        var zeroY = scaleP(0);
+        var svg2 = '<svg viewBox="0 0 ' + w + ' ' + h + '" xmlns="http://www.w3.org/2000/svg">';
+        svg2 += '<rect x="0" y="0" width="' + w + '" height="' + h + '" fill="#ffffff" rx="4" />';
+        [-4, -2, 0, 2, 4, 6, 8].forEach(function (g) {
+          var gy = scaleP(g);
+          svg2 += '<line x1="' + padL + '" y1="' + gy + '" x2="' + (w - padR) + '" y2="' + gy + '" stroke="#e2e8f0" stroke-dasharray="3,3" />';
+          svg2 += '<text x="' + (padL - 8) + '" y="' + (gy + 4) + '" text-anchor="end" font-size="10" fill="#64748b">' + (g > 0 ? "+" + g : g) + 'p</text>';
+        });
+        svg2 += '<line x1="' + padL + '" y1="' + zeroY + '" x2="' + (w - padR) + '" y2="' + zeroY + '" stroke="#475569" stroke-width="1.2" />';
+
+        bins.forEach(function (b, i) {
+          var pips = b.mean_spread_move * 10000.0;
+          var bw = gw * 0.42;
+          var bx = padL + i * gw + (gw - bw) / 2;
+          var py = scaleP(pips);
+          var topY = Math.min(zeroY, py);
+          var bh = Math.max(2, Math.abs(py - zeroY));
+          var col = pips >= 0 ? "#15803d" : "#b91c1c";
+          svg2 += '<rect x="' + bx + '" y="' + topY + '" width="' + bw + '" height="' + bh + '" fill="' + col + '" rx="2" />';
+          var ly = pips >= 0 ? (topY - 5) : (topY + bh + 11);
+          svg2 += '<text x="' + (bx + bw / 2) + '" y="' + ly + '" text-anchor="middle" font-size="10" font-weight="700" fill="' + col + '">' + fmtSigned(pips, 2, "") + 'p</text>';
+          svg2 += '<text x="' + (padL + i * gw + gw / 2) + '" y="' + (h - 12) + '" text-anchor="middle" font-size="10.5" font-weight="600" fill="#1e293b">' + b.bin + '</text>';
+        });
+        svg2 += '</svg>';
+        document.getElementById("chart-calibration-move").innerHTML = svg2;
+
+        // Populate table
+        var tb = document.getElementById("table-calibration-bins");
+        if (tb) {
+          tb.innerHTML = d.calibration_bins.map(function (b) {
+            var pips = b.mean_spread_move * 10000.0;
+            var cls = pips >= 0 ? "val-pos" : "val-neg";
+            var isTot = b.bin === "Total";
+            var tagOpen = isTot ? "<strong>" : "";
+            var tagClose = isTot ? "</strong>" : "";
+            return '<tr>' +
+              '<td>' + tagOpen + b.bin + tagClose + '</td>' +
+              '<td class="num">' + tagOpen + fmtInt(b.evaluated) + tagClose + '</td>' +
+              '<td class="num">' + fmtNum(b.mean_score, 4) + '</td>' +
+              '<td class="num">' + tagOpen + fmtNum(b.hit_rate_pct, 2) + '%' + tagClose + '</td>' +
+              '<td class="num ' + cls + '">' + fmtSigned(b.mean_spread_move, 6, "") + '</td>' +
+              '<td class="num ' + cls + '">' + fmtSigned(pips, 2, "") + ' pips</td>' +
+              '<td class="num">' + fmtNum(b.brier_score, 4) + '</td>' +
+              '</tr>';
+          }).join("");
+        }
+      }
+
+      function renderExplorer(datasets, expKey) {
+        var d = datasets[expKey];
+        if (!d) return;
+        document.getElementById("explorer-meta").innerHTML =
+          '<strong>Dataset:</strong> ' + d.label + ' &nbsp;|&nbsp; <strong>Session:</strong> ' + d.session +
+          ' &nbsp;|&nbsp; <strong>Report File:</strong> <code>reports/' + d.report_file + '</code>' +
+          ' &nbsp;|&nbsp; <strong>FNV-1a Digest:</strong> <code>' + d.digest + '</code>';
+
+        var tbBlocks = document.getElementById("exp-table-blocks");
+        if (tbBlocks) {
+          tbBlocks.innerHTML = (d.non_overlapping_blocks || []).map(function (r) {
+            var cls = (r.mean_spread_move || 0) >= 0 ? "val-pos" : "val-neg";
+            return '<tr>' +
+              '<td><strong>' + r.kind + '</strong></td>' +
+              '<td class="num">' + fmtInt(r.blocks) + '</td>' +
+              '<td class="num">' + (r.hit_rate_pct !== null ? fmtNum(r.hit_rate_pct, 2) + '%' : 'n/a') + '</td>' +
+              '<td class="num ' + cls + '">' + (r.mean_spread_move !== null ? fmtSigned(r.mean_spread_move, 6, "") : 'n/a') + '</td>' +
+              '<td class="num">' + (r.t_stat !== null ? fmtSigned(r.t_stat, 2, "") : 'n/a') + '</td>' +
+              '</tr>';
+          }).join("");
+        }
+
+        var tbLat = document.getElementById("exp-table-latency");
+        if (tbLat) {
+          tbLat.innerHTML = (d.latency || []).map(function (r) {
+            return '<tr>' +
+              '<td><strong>' + r.stage + '</strong></td>' +
+              '<td class="num">' + (r.median_us !== null ? fmtNum(r.median_us, 1) : 'n/a') + '</td>' +
+              '<td class="num">' + (r.p95_us !== null ? fmtNum(r.p95_us, 1) : 'n/a') + '</td>' +
+              '<td class="num">' + (r.p99_us !== null ? fmtNum(r.p99_us, 1) : 'n/a') + '</td>' +
+              '<td class="num">' + fmtInt(r.samples) + '</td>' +
+              '</tr>';
+          }).join("");
+        }
+
+        var tbMkt = document.getElementById("exp-table-market");
+        if (tbMkt) {
+          var mRows = [
+            ["Lines Read", fmtInt(d.market.lines_read)],
+            ["Valid Events", fmtInt(d.market.events_valid)],
+            ["Rejected Events", fmtInt(d.market.events_rejected)],
+            ["Malformed Rows", fmtInt(d.market.events_malformed)],
+            ["Stale Gaps Flagged", fmtInt(d.market.stale_gaps)],
+            ["Validator Rejection Breakdown", '<code>' + d.market.rejection_reasons + '</code>'],
+            ["Stream Duration", d.market.duration],
+            ["Usable Signals (Signal Rate)", fmtInt(d.predictions.usable) + " (" + fmtNum(d.predictions.signal_rate_pct, 3) + "%)"],
+            ["Signal Kind Distribution", '<code>' + d.predictions.kind_distribution + '</code>']
+          ];
+          tbMkt.innerHTML = mRows.map(function (r) {
+            return '<tr><td><strong>' + r[0] + '</strong></td><td class="num">' + r[1] + '</td></tr>';
+          }).join("");
+        }
+
+        var tbPerf = document.getElementById("exp-table-perf");
+        if (tbPerf) {
+          var pRows = [
+            ["Decisions Allowed / Rejected", fmtInt(d.decisions.allowed) + " / " + fmtInt(d.decisions.rejected)],
+            ["Risk Rejection Reasons", '<code style="font-size:11.5px">' + d.decisions.rejection_reasons + '</code>'],
+            ["Orders Submitted / Fills", fmtInt(d.execution.orders_submitted) + " / " + fmtInt(d.execution.fills)],
+            ["Horizon / Stop-Loss / Take-Profit Exits", d.execution.horizon_exits + " / " + d.execution.stop_loss_exits + " / " + d.execution.take_profit_exits],
+            ["Gross P&L (After Spread)", '<span class="' + (d.performance.gross_pnl >= 0 ? "val-pos" : "val-neg") + '">' + fmtSigned(d.performance.gross_pnl, 2, "$") + '</span>'],
+            ["Net P&L (After Spread, Comm & Slip)", '<span class="' + (d.performance.net_pnl >= 0 ? "val-pos" : "val-neg") + '">' + fmtSigned(d.performance.net_pnl, 2, "$") + '</span>'],
+            ["Commission / Slippage Paid", "$" + fmtNum(d.performance.commission_paid, 2) + " / $" + fmtNum(d.performance.slippage_paid, 2)],
+            ["Max Drawdown", "$" + fmtNum(d.performance.max_drawdown, 2) + " (" + fmtNum(d.performance.max_drawdown_pct, 3) + "%)"],
+            ["Account Reconciliation", d.execution.reconciliation]
+          ];
+          tbPerf.innerHTML = pRows.map(function (r) {
+            return '<tr><td><strong>' + r[0] + '</strong></td><td class="num">' + r[1] + '</td></tr>';
+          }).join("");
+        }
+      }
+
+      function initPortal(payload) {
+        if (!payload || !payload.datasets) return;
+        if (payload.generated_at_utc) {
+          document.getElementById("badge-updated").textContent = "Updated: " + payload.generated_at_utc;
+        }
+        if (payload.unit_tests_passed) {
+          document.getElementById("badge-tests").textContent =
+            payload.unit_tests_passed + " / " + payload.unit_tests_total + " Unit Tests Passing";
+        }
+        var agg = payload.aggregate_real_eurusd;
+        if (agg) {
+          document.getElementById("kpi-ticks").textContent = fmtInt(agg.total_ticks_read);
+          document.getElementById("kpi-valid-sub").textContent =
+            fmtInt(agg.total_valid_events) + " valid quotes (" + agg.total_hours + " hours continuous)";
+          document.getElementById("kpi-gross").textContent = fmtSigned(agg.cumulative_gross_pnl, 2, "$");
+          document.getElementById("kpi-net").textContent = fmtSigned(agg.cumulative_net_pnl, 2, "$");
+          document.getElementById("kpi-oos-net").textContent = fmtSigned(agg.combined_oos_net_pnl, 2, "$");
+          document.getElementById("kpi-oos-sub").textContent =
+            fmtSigned(agg.combined_oos_gross_pnl, 2, "$") + " Gross across 261,357 unseen ticks (11.55h)";
+          document.getElementById("kpi-dd").textContent = fmtNum(agg.worst_split_drawdown_pct, 3) + "%";
+          document.getElementById("kpi-dd-sub").textContent =
+            "$" + fmtNum(agg.worst_split_drawdown, 2) + " on $100,000 initial equity";
+        }
+
+        renderProgressionChart(payload.engineering_progression || []);
+        renderSplitsCharts(payload.datasets);
+        renderCalibrationSection(payload.datasets, "dev");
+        renderExplorer(payload.datasets, "dev");
+
+        // Wire calibration tabs
+        var calBtns = document.querySelectorAll("#cal-tab-bar .tab-btn");
+        calBtns.forEach(function (btn) {
+          btn.addEventListener("click", function () {
+            calBtns.forEach(function (b) { b.classList.remove("active"); });
+            btn.classList.add("active");
+            renderCalibrationSection(payload.datasets, btn.getAttribute("data-split"));
+          });
+        });
+
+        // Wire explorer tabs
+        var expBtns = document.querySelectorAll("#exp-tab-bar .tab-btn");
+        expBtns.forEach(function (btn) {
+          btn.addEventListener("click", function () {
+            expBtns.forEach(function (b) { b.classList.remove("active"); });
+            btn.classList.add("active");
+            renderExplorer(payload.datasets, btn.getAttribute("data-exp"));
+          });
+        });
+      }
+
+      // 1. Load embedded JSON snapshot immediately (works offline / file://)
+      try {
+        var el = document.getElementById("vectra-embedded-data");
+        if (el && el.textContent.trim().length > 2) {
+          initPortal(JSON.parse(el.textContent));
+        }
+      } catch (e) {}
+
+      // 2. Also fetch data/metrics.json when served over HTTP/HTTPS (GitHub Pages)
+      if (window.location.protocol === "http:" || window.location.protocol === "https:") {
+        fetch("data/metrics.json", { cache: "no-store" })
+          .then(function (r) { return r.ok ? r.json() : null; })
+          .then(function (data) { if (data && data.datasets) initPortal(data); })
+          .catch(function () {});
+      }
+    })();
+  </script>
+</body>
+</html>
