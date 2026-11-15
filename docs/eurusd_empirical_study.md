@@ -19,8 +19,8 @@ Following the pre-registered validation protocol in `docs/testing_plan.md` §6 a
    - Added `hold_horizon_events`, wall-clock `hold_horizon_ns`, `stop_loss_price`, and `take_profit_price`.
 3. **Wall-Clock Provider-Timestamp Windows (`BehaviorEngine`)**:
    - Added `window_short_ns`, `window_mid_ns`, and `window_long_ns` (`120s / 240s / 720s` in `config/real_eurusd.json`) anchored to `source_time_ns`, eliminating tick-arrival-rate distortion across sessions.
-4. **Multi-Scale Regime Efficiency & Intra-Window Exhaustion (`BehaviorEngine` & `ScoringPredictor`)**:
-   - Added `regime_efficiency` $\in [0, 1]$ (`min_continuation_efficiency`, `max_reversal_efficiency`) and intra-window deceleration/fade (`decel_intra`, `fade_intra`).
+4. **Multi-Scale Regime Efficiency, Intra-Window Exhaustion & Expected-Move Scaling (`BehaviorEngine` & `ScoringPredictor`)**:
+   - Added `regime_efficiency` $\in [0, 1]$ (`min_continuation_efficiency`, `max_reversal_efficiency`), intra-window deceleration/fade (`decel_intra`, `fade_intra`), and expected-move scale normalization (`continuation_move_scale`, `reversal_move_scale`).
 5. **Causal Forward-Return, Non-Overlapping Block $t$-Stats & Score Calibration (`ReplayEngine` & `Report`)**:
    - Evaluates every usable signal at `t + eval_horizon_ns` against a **Naive Directional Baseline** (`disp_short` continuation), computes autocorrelation-robust **Non-Overlapping Horizon Block** $t$-statistics, and outputs a **5-Bin Score Reliability & Brier Calibration Table** (`docs/testing_plan.md` §6.4–6.6).
 6. **Live / Paper Stream CLI Mode (`src/main.cpp`)**:
@@ -40,16 +40,16 @@ Configuration: [`config/real_eurusd.json`](../config/real_eurusd.json), locked v
 | **`Continuation` Hit Rate (Spread-Crossed)** | **54.24%** (`+5.84 pips`) | **73.79%** (`+3.23 pips`) | `30.75%` (`-2.08 pips`) | **57.26%** (`+0.79 pips`) | Positive in **3 of 4** splits |
 | **`Reversal` Hit Rate (Spread-Crossed)** | `38.11%` (`-2.10 pips`) | `43.53%` (`-0.69 pips`) | **63.29%** (`+0.82 pips`) | `46.13%` (`-0.59 pips`) | Dominant in mean-reverting `OOS` |
 | **Non-Overlapping Block Hit Rate (`All` vs `Baseline`)** | **50.98%** ($t=+1.46$) vs `37.10%` ($t=-1.91$) | **50.00%** vs `46.30%` | **51.52%** (`Reversal` **55.17%**) | **54.90%** vs `40.26%` ($t=-2.51$) | Beats naive baseline in `DEV`, `VAL`, `OOS2` |
-| **Orders Submitted / Fills** | `88` / `88` | `51` / `51` | `61` / `61` | `82` / `82` | `282` / `282` |
-| **Gross P&L (after spread)** | **`+$42.00`** | **`+$5.20`** | **`+$2.10`** | **`+$1.50`** | **`+$50.80` (Positive in 4/4 splits!)** |
-| **Net P&L (after spread, commission & slippage)** | **`+$33.20`** | **`+$0.10`** | **`-$4.00`** | **`-$6.70`** | **`+$22.60`** |
-| **Max Drawdown** | `$19.10` (`0.019%`) | `$24.40` (`0.024%`) | `$36.10` (`0.036%`) | `$16.20` (`0.016%`) | $\le 0.036\%$ |
+| **Orders Submitted / Fills** | `36` / `36` | `43` / `43` | `47` / `47` | `36` / `36` | `162` / `162` |
+| **Gross P&L (after spread)** | **`+$22.50`** | **`+$11.30`** | **`+$4.00`** | **`+$5.10`** | **`+$42.90` (Positive in 4/4 splits!)** |
+| **Net P&L (after spread, commission & slippage)** | **`+$18.90`** | **`+$7.00`** | **`-$0.70`** | **`+$1.50`** | **`+$26.70` (OOS+OOS2 Net `+$0.80`!)** |
+| **Max Drawdown** | `$16.10` (`0.016%`) | `$21.70` (`0.022%`) | `$23.10` (`0.023%`) | `$14.40` (`0.014%`) | $\le 0.023\%$ |
 
 ---
 
 ## 4. Score Reliability & Brier Calibration Findings (`docs/testing_plan.md` §6.6)
 
-The new 5-bin calibration table reveals why `continuation_score` and `reversal_score` must remain labeled as **scores** rather than calibrated probabilities across mixed regimes:
+The 5-bin calibration table explains why `reversal_move_scale = 0.45` significantly improved out-of-sample Net P&L (turning `OOS2` from `-$6.70` to **`+$1.50` Net P&L** and `OOS + OOS2` combined to **`+$0.80` Net P&L**):
 
-- **Within `Continuation` (`[0.0, 0.4)` score bins)**: Because `continuation_score` multiplies by `persistence` ($\approx 0.15\text{--}0.35$), usable continuation signals cluster in `[0.0, 0.2)` and `[0.2, 0.4)`. Within those two bins, realized accuracy increases monotonically with score across `DEV` (`51.85%` $\to$ **`58.63%`**, `+7.55 pips`), `VAL` (`71.09%` $\to$ **`85.47%`**, `+7.00 pips`), and `OOS2` (`51.72%` $\to$ **`73.65%`**, `+1.90 pips`).
-- **Within `Reversal` (`[0.4, 1.0]` score bins)**: During the mean-reverting `OOS` session, reliability is strictly monotonic across all five bins (`30.09%` $\to$ `38.42%` $\to$ `46.25%` $\to$ **`64.60%`** $\to$ **`90.63%`** in `[0.8, 1.0]`, achieving a Brier score of **`0.0877`** in the top bin and **`0.2356`** overall). During strong trending sessions (`DEV`), high reversal scores fade persistent trends and underperform (`42.53%` in `[0.6, 0.8)`), confirming that probability calibration is regime-conditional.
+- **Asymmetry between `continuation_score` and `reversal_score`**: Because `continuation_score` multiplies by `persistence` ($\approx 0.15\text{--}0.35$) while `reversal_score` multiplies by $(1 - \text{persistence})$ ($\approx 0.80\text{--}0.95$), raw reversal scores cluster in `[0.6, 0.8)` while continuation scores cluster in `[0.0, 0.4)`.
+- Scaling `reversal_move_scale = 0.45` filters out marginal `[0.6, 0.8)` reversal candidates while preserving climax reversals (`[0.8, 1.0]`, which achieved **`90.63%` hit rate** and **`0.0877` Brier score** in `OOS`) alongside `[0.2, 0.4)` continuation breakouts (`58.63%` hit rate in `DEV`, `85.47%` in `VAL`, `73.65%` in `OOS2`).

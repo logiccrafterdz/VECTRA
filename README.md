@@ -74,7 +74,7 @@ python scripts/gen_sample_ticks.py
 
 ## Actual results (v0.1, sample replay, this machine)
 
-Build: MSVC 19.50 (`/W4 /permissive-`), CMake 4.1, Release. **114/114 unit
+Build: MSVC 19.50 (`/W4 /permissive-`), CMake 4.1, Release. **115/115 unit
 tests pass**, both `ctest` entries pass (`vectra_unit_tests`,
 `vectra_sample_replay`).
 

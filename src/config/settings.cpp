@@ -99,6 +99,10 @@ void apply_prediction(const Json& root, backtest::ReplayConfig* replay) {
       p->get_number("max_reversal_efficiency", c.max_reversal_efficiency);
   c.max_continuation_extension_z =
       p->get_number("max_continuation_extension_z", c.max_continuation_extension_z);
+  c.continuation_move_scale =
+      p->get_number("continuation_move_scale", c.continuation_move_scale);
+  c.reversal_move_scale =
+      p->get_number("reversal_move_scale", c.reversal_move_scale);
 }
 
 void apply_risk(const Json& root, backtest::ReplayConfig* replay) {

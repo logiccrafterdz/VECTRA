@@ -163,10 +163,16 @@ Prediction ScoringPredictor::predict(const behavior::BehaviorFeatures& f) const 
   }
 
   // ---- Heuristic expected movement over the horizon -----------------------
-  const double strength = p.kind == SignalKind::Reversal ? p.reversal_score : p.continuation_score;
+  const double kind_scale = p.kind == SignalKind::Reversal
+                                ? config_.reversal_move_scale
+                                : config_.continuation_move_scale;
+  const double strength =
+      (p.kind == SignalKind::Reversal ? p.reversal_score : p.continuation_score) * kind_scale;
   const double magnitude =
       clampd(abs_disp, 0.0, config_.max_expected_move_log);
-  p.expected_move_log = p.direction * strength * magnitude;
+  p.expected_move_log = clampd(p.direction * strength * magnitude,
+                               -config_.max_expected_move_log,
+                               config_.max_expected_move_log);
   p.note = "heuristic, uncalibrated; scores are not probabilities";
   return p;
 }

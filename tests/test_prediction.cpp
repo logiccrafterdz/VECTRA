@@ -199,3 +199,17 @@ VT_TEST(Prediction, RegimeEfficiencyGatesContinuationInChop) {
   const Prediction allowed = predictor.predict(trend);
   VT_ASSERT_EQ(allowed.kind, SignalKind::Continuation);
 }
+
+VT_TEST(Prediction, MoveScalesAdjustExpectedMoveBySignalKind) {
+  PredictionConfig base_cfg;
+  ScoringPredictor base_pred{base_cfg};
+  const Prediction p1 = base_pred.predict(base_features());
+  VT_ASSERT_EQ(p1.kind, SignalKind::Continuation);
+
+  PredictionConfig scaled_cfg;
+  scaled_cfg.continuation_move_scale = 2.0;
+  ScoringPredictor scaled_pred{scaled_cfg};
+  const Prediction p2 = scaled_pred.predict(base_features());
+  VT_ASSERT_EQ(p2.kind, SignalKind::Continuation);
+  VT_ASSERT_NEAR(p2.expected_move_log, 2.0 * p1.expected_move_log, 1e-12);
+}

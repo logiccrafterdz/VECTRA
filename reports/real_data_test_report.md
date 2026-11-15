@@ -62,9 +62,9 @@ Scores are continuity/reversal **scores** in [0,1], produced by a fixed formula 
 
 | Metric | Value |
 |---|---|
-| Decisions allowed | 45 |
-| Decisions rejected | 96374 |
-| Rejection reasons | Cooldown=5012, DataUnreliable=50, InsufficientEdge=1315, InvalidSignal=6616, NoSignal=83381 |
+| Decisions allowed | 18 |
+| Decisions rejected | 96401 |
+| Rejection reasons | Cooldown=4317, DataUnreliable=50, InsufficientEdge=2037, InvalidSignal=6616, NoSignal=83381 |
 | Kill switch | inactive |
 | Min expected edge (price units) | 0.000100 |
 | Max position (base units) | 20000.00 |
@@ -75,16 +75,16 @@ Scores are continuity/reversal **scores** in [0,1], produced by a fixed formula 
 
 | Metric | Value |
 |---|---|
-| Order submissions | 88 |
-| Accepted by gateway | 88 |
+| Order submissions | 36 |
+| Accepted by gateway | 36 |
 | Venue rejections (simulated) | 0 |
 | Cancellations | 0 |
 | Duplicate submissions blocked | 0 |
-| Fill events | 88 |
+| Fill events | 36 |
 | of which partial fills | 0 |
-| Horizon exits submitted | 39 |
+| Horizon exits submitted | 14 |
 | Stop-loss exits submitted | 2 |
-| Take-profit exits submitted | 3 |
+| Take-profit exits submitted | 2 |
 | Reconciliation | matched (local and broker accounts agree) |
 
 Execution model: fills occur against the next quote after the configured latency, buys lift the ask and sells hit the bid, with configurable slippage and commission. No order fills at the midpoint by default.
@@ -94,14 +94,14 @@ Execution model: fills occur against the next quote after the configured latency
 | Metric | Value |
 |---|---|
 | Initial equity | 100000.00 |
-| Final equity | 100033.20 |
-| Realized P&L | 37.60 |
-| Gross P&L (after spread, before commission/slippage) | 42.00 |
-| Net P&L | 33.20 |
-| Commission paid | 4.40 |
-| Slippage paid | 4.40 |
-| Estimated spread cost (informational) | 8.15 |
-| Max drawdown | 19.10 (0.019%) |
+| Final equity | 100018.90 |
+| Realized P&L | 20.70 |
+| Gross P&L (after spread, before commission/slippage) | 22.50 |
+| Net P&L | 18.90 |
+| Commission paid | 1.80 |
+| Slippage paid | 1.80 |
+| Estimated spread cost (informational) | 3.90 |
+| Max drawdown | 16.10 (0.016%) |
 
 These results come from a synthetic replay. They are a **pipeline smoke test**, not evidence of an edge.
 
@@ -109,10 +109,10 @@ These results come from a synthetic replay. They are a **pipeline smoke test**, 
 
 | Stage | Median | p95 | p99 | Samples |
 |---|---|---|---|---|
-| Event processing | 0.8 | 1.3 | 1.8 | 96419 |
-| Signal calculation | 0.9 | 1.4 | 1.6 | 96419 |
-| Decision | 0.2 | 0.3 | 1.5 | 96419 |
-| Simulated order (submit to ack, venue clock) | 65000.0 | 1665000.0 | 2540000.0 | 88 |
+| Event processing | 0.7 | 1.1 | 1.6 | 96419 |
+| Signal calculation | 0.9 | 1.2 | 1.7 | 96419 |
+| Decision | 0.2 | 0.3 | 1.4 | 96419 |
+| Simulated order (submit to ack, venue clock) | 57000.0 | 1376000.0 | 1397000.0 | 36 |
 
 The first three rows are local processing durations measured with std::chrono::steady_clock. The simulated-order row is measured on the venue's simulated clock (submit to acknowledgement) and, being driven by market-event timestamps, is quantized by the tick interval. Provider timestamps are never subtracted from local timestamps: no clock synchronization model exists in v0.1.
 
@@ -128,4 +128,4 @@ The first three rows are local processing durations measured with std::chrono::s
 - **Split discipline**: when real data arrives, separate development / validation / out-of-sample periods and never tune thresholds on the final test period.
 
 ---
-Run digest (FNV-1a over signals, decisions, fills, P&L): `5e7e34729430d72b`
+Run digest (FNV-1a over signals, decisions, fills, P&L): `31ac500350c03e6f`

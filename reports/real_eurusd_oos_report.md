@@ -62,9 +62,9 @@ Scores are continuity/reversal **scores** in [0,1], produced by a fixed formula 
 
 | Metric | Value |
 |---|---|
-| Decisions allowed | 31 |
-| Decisions rejected | 90446 |
-| Rejection reasons | Cooldown=2777, DataUnreliable=69, InsufficientEdge=1415, InvalidSignal=5420, NoSignal=80765 |
+| Decisions allowed | 24 |
+| Decisions rejected | 90453 |
+| Rejection reasons | Cooldown=1888, DataUnreliable=69, InsufficientEdge=2311, InvalidSignal=5420, NoSignal=80765 |
 | Kill switch | inactive |
 | Min expected edge (price units) | 0.000100 |
 | Max position (base units) | 20000.00 |
@@ -75,14 +75,14 @@ Scores are continuity/reversal **scores** in [0,1], produced by a fixed formula 
 
 | Metric | Value |
 |---|---|
-| Order submissions | 61 |
-| Accepted by gateway | 61 |
+| Order submissions | 47 |
+| Accepted by gateway | 47 |
 | Venue rejections (simulated) | 0 |
 | Cancellations | 0 |
 | Duplicate submissions blocked | 0 |
-| Fill events | 61 |
+| Fill events | 47 |
 | of which partial fills | 0 |
-| Horizon exits submitted | 29 |
+| Horizon exits submitted | 22 |
 | Stop-loss exits submitted | 1 |
 | Reconciliation | matched (local and broker accounts agree) |
 
@@ -93,14 +93,14 @@ Execution model: fills occur against the next quote after the configured latency
 | Metric | Value |
 |---|---|
 | Initial equity | 100000.00 |
-| Final equity | 99996.00 |
-| Realized P&L | -11.50 |
-| Gross P&L (after spread, before commission/slippage) | 2.10 |
-| Net P&L | -4.00 |
-| Commission paid | 3.05 |
-| Slippage paid | 3.05 |
-| Estimated spread cost (informational) | 3.65 |
-| Max drawdown | 36.10 (0.036%) |
+| Final equity | 99999.30 |
+| Realized P&L | -8.90 |
+| Gross P&L (after spread, before commission/slippage) | 4.00 |
+| Net P&L | -0.70 |
+| Commission paid | 2.35 |
+| Slippage paid | 2.35 |
+| Estimated spread cost (informational) | 3.20 |
+| Max drawdown | 23.10 (0.023%) |
 
 These results come from a synthetic replay. They are a **pipeline smoke test**, not evidence of an edge.
 
@@ -108,10 +108,10 @@ These results come from a synthetic replay. They are a **pipeline smoke test**, 
 
 | Stage | Median | p95 | p99 | Samples |
 |---|---|---|---|---|
-| Event processing | 0.8 | 1.3 | 1.7 | 90477 |
-| Signal calculation | 0.9 | 1.3 | 1.6 | 90477 |
-| Decision | 0.2 | 0.3 | 1.4 | 90477 |
-| Simulated order (submit to ack, venue clock) | 57000.0 | 1293000.0 | 1768000.0 | 61 |
+| Event processing | 0.8 | 1.4 | 2.1 | 90477 |
+| Signal calculation | 0.9 | 1.4 | 2.7 | 90477 |
+| Decision | 0.2 | 0.4 | 1.4 | 90477 |
+| Simulated order (submit to ack, venue clock) | 40000.0 | 721000.0 | 884000.0 | 47 |
 
 The first three rows are local processing durations measured with std::chrono::steady_clock. The simulated-order row is measured on the venue's simulated clock (submit to acknowledgement) and, being driven by market-event timestamps, is quantized by the tick interval. Provider timestamps are never subtracted from local timestamps: no clock synchronization model exists in v0.1.
 
@@ -127,4 +127,4 @@ The first three rows are local processing durations measured with std::chrono::s
 - **Split discipline**: when real data arrives, separate development / validation / out-of-sample periods and never tune thresholds on the final test period.
 
 ---
-Run digest (FNV-1a over signals, decisions, fills, P&L): `418fc6a81e464c8e`
+Run digest (FNV-1a over signals, decisions, fills, P&L): `b4aaaa60a7b78883`

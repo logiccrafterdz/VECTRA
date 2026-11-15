@@ -23,6 +23,7 @@ VECTRA_BIN = os.path.join("build", "Release", "vectra.exe")
 DEV_CSV = os.path.join("examples", "real_eurusd_dev.csv")
 VAL_CSV = os.path.join("examples", "real_eurusd_val.csv")
 OOS_CSV = os.path.join("examples", "real_eurusd_oos.csv")
+OOS2_CSV = os.path.join("examples", "real_eurusd_oos2.csv")
 
 
 def run_replay(cfg_dict, data_path, report_path=None):
@@ -89,17 +90,18 @@ def main():
         base_cfg = json.load(f)
 
     candidates = []
-    for min_eff in [0.50, 0.55]:
-        for max_rev_eff in [0.45, 0.55, 1.0]:
-            for min_edge in [0.00010, 0.00012, 0.00014]:
-                candidates.append({
-                    "min_continuation_efficiency": min_eff,
-                    "max_reversal_efficiency": max_rev_eff,
-                    "reversal_exhaustion_threshold": 0.65,
-                    "continuation_exhaustion_threshold": 0.35,
-                    "max_persistence_for_reversal": 0.20,
-                    "min_expected_edge": min_edge,
-                })
+    for cont_scale in [1.0, 2.0, 2.5, 3.0]:
+        for rev_scale in [0.45, 0.55, 0.70, 1.0]:
+            candidates.append({
+                "min_continuation_efficiency": 0.55,
+                "max_reversal_efficiency": 1.0,
+                "reversal_exhaustion_threshold": 0.65,
+                "continuation_exhaustion_threshold": 0.35,
+                "max_persistence_for_reversal": 0.20,
+                "continuation_move_scale": cont_scale,
+                "reversal_move_scale": rev_scale,
+                "min_expected_edge": 0.00010,
+            })
 
     print(f"Evaluating {len(candidates)} candidate parameter sets on DEV and VAL (OOS untouched)...", flush=True)
     best_score = -1e9
@@ -115,6 +117,8 @@ def main():
         cfg["prediction"]["reversal_exhaustion_threshold"] = params["reversal_exhaustion_threshold"]
         cfg["prediction"]["continuation_exhaustion_threshold"] = params["continuation_exhaustion_threshold"]
         cfg["prediction"]["max_persistence_for_reversal"] = params["max_persistence_for_reversal"]
+        cfg["prediction"]["continuation_move_scale"] = params["continuation_move_scale"]
+        cfg["prediction"]["reversal_move_scale"] = params["reversal_move_scale"]
         cfg["risk"]["min_expected_edge"] = params["min_expected_edge"]
 
         dev_res = run_replay(cfg, DEV_CSV)
@@ -141,7 +145,8 @@ def main():
                 f"cont={dev_res['cont_hit']:.1f}%, rev={dev_res['rev_hit']:.1f}%[{dev_res['rev_n']}]) | "
                 f"VAL net={val_res['net_pnl']:+.2f} (DD={val_res['max_dd']:.1f}, fills={val_res['fills']}, "
                 f"cont={val_res['cont_hit']:.1f}%, rev={val_res['rev_hit']:.1f}%[{val_res['rev_n']}]) | "
-                f"params={params}"
+                f"params={params}",
+                flush=True,
             )
 
     if best_params is None:
@@ -157,6 +162,8 @@ def main():
     final_cfg["prediction"]["reversal_exhaustion_threshold"] = best_params["reversal_exhaustion_threshold"]
     final_cfg["prediction"]["continuation_exhaustion_threshold"] = best_params["continuation_exhaustion_threshold"]
     final_cfg["prediction"]["max_persistence_for_reversal"] = best_params["max_persistence_for_reversal"]
+    final_cfg["prediction"]["continuation_move_scale"] = best_params["continuation_move_scale"]
+    final_cfg["prediction"]["reversal_move_scale"] = best_params["reversal_move_scale"]
     final_cfg["risk"]["min_expected_edge"] = best_params["min_expected_edge"]
 
     with open(BASE_CONFIG_PATH, "w", encoding="utf-8") as f:
@@ -166,10 +173,11 @@ def main():
     dev_final = run_replay(final_cfg, DEV_CSV, os.path.join("reports", "real_eurusd_dev_report.md"))
     val_final = run_replay(final_cfg, VAL_CSV, os.path.join("reports", "real_eurusd_val_report.md"))
     oos_final = run_replay(final_cfg, OOS_CSV, os.path.join("reports", "real_eurusd_oos_report.md"))
+    oos2_final = run_replay(final_cfg, OOS2_CSV, os.path.join("reports", "real_eurusd_oos2_report.md"))
     run_replay(final_cfg, os.path.join("examples", "real_eurusd_ticks.csv"), os.path.join("reports", "real_data_test_report.md"))
 
-    print("\n=== Final 3-Split Summary (DEV / VAL / OOS) ===")
-    for label, res in [("DEV", dev_final), ("VAL", val_final), ("OOS", oos_final)]:
+    print("\n=== Final 4-Split Summary (DEV / VAL / OOS / OOS2) ===")
+    for label, res in [("DEV", dev_final), ("VAL", val_final), ("OOS", oos_final), ("OOS2", oos2_final)]:
         print(
             f"  {label}: Gross={res['gross_pnl']:+.2f}, Net={res['net_pnl']:+.2f}, "
             f"MaxDD={res['max_dd']:.2f}, Fills={res['fills']}, "

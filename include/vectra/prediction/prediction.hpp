@@ -55,6 +55,8 @@ struct PredictionConfig {
   double min_continuation_efficiency = 0.0;
   double max_reversal_efficiency = 1.0;
   double max_continuation_extension_z = 0.0;
+  double continuation_move_scale = 1.0;
+  double reversal_move_scale = 1.0;
 
   behavior::ExhaustionConfig exhaustion;
 };

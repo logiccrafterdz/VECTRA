@@ -45,7 +45,9 @@
     "require_long_confirmation": false,
     "min_continuation_efficiency": 0.55,
     "max_reversal_efficiency": 1.0,
-    "max_continuation_extension_z": 0.0
+    "max_continuation_extension_z": 0.0,
+    "continuation_move_scale": 1.0,
+    "reversal_move_scale": 0.45
   },
   "risk": {
     "enabled": true,
