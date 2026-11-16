@@ -172,7 +172,7 @@ Prior to downloading Q1 2023 data, the complete experimental pipeline was verifi
 ### 8.2 Pre-Registered Session Calendar & Blackout Specifications
 Both the conversion script [`scripts/convert_dukascopy.py`](../scripts/convert_dukascopy.py) and the C++ engine [`src/market/session.cpp`](../src/market/session.cpp) implement identical session calendar rules anchored to New York civil time (`America/New_York`) with explicit US Daylight Saving Time (DST starts 2nd Sunday of March 02:00 EST / 07:00 UTC, ends 1st Sunday of November 02:00 EDT / 06:00 UTC):
 1. **Daily Rollover Blackout**:
-   - Runs daily from 16:45 NY to 18:30 NY (minute-of-day 1005 through 1110).
+   - Runs daily from 16:45 NY to 18:30 NY (half-open minute-of-day interval $[1005, 1110)$).
    - In UTC: 21:45 to 23:30 during winter (EST, UTC-5); 20:45 to 22:30 during summer (EDT, UTC-4).
 2. **Weekend Blackout**:
    - Runs continuously from Friday 16:45 NY until Sunday 18:30 NY (23:30 UTC winter / 22:30 UTC summer).
