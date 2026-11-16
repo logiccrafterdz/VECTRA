@@ -10,6 +10,7 @@ Jan 1, 2023 00:00:00 UTC through Mar 31, 2023 23:59:59 UTC).
 
 import argparse
 import pathlib
+import shutil
 import subprocess
 import sys
 from typing import List
@@ -24,8 +25,9 @@ def download_pair(instrument: str, from_date: str, to_date: str, output_dir: pat
                   batch_size: int = 10, batch_pause_ms: int = 1000) -> pathlib.Path:
     output_dir.mkdir(parents=True, exist_ok=True)
     
+    npx_bin = shutil.which("npx") or "npx"
     cmd = [
-        "npx", "dukascopy-node",
+        npx_bin, "dukascopy-node",
         "-i", instrument.lower(),
         "-from", from_date,
         "-to", to_date,
