@@ -1,10 +1,11 @@
-# VECTRA Large-Scale Empirical Pre-Registration & Falsification Protocol (v1.5)
+# VECTRA Large-Scale Empirical Pre-Registration & Falsification Protocol (v1.6)
 
 **Status**: Pre-Registered & Locked Prior to Data Acquisition  
-**Git Tag**: `prereg-v1.5`  
+**Git Tag**: `prereg-v1.6`  
 **Target Evaluation Period**: 2023-01-01 00:00:00 UTC to 2023-03-31 23:59:59 UTC (Q1 2023, 3 full calendar months)  
 **Target Instruments**: `EURUSD`, `GBPUSD`, `USDJPY`  
-**Test Harness**: [`scripts/run_experiment_suite.py`](../scripts/run_experiment_suite.py)
+**Test Harness**: [`scripts/run_experiment_suite.py`](../scripts/run_experiment_suite.py)  
+**Data Acquisition Suite**: [`scripts/download_dukascopy.py`](../scripts/download_dukascopy.py), [`scripts/convert_dukascopy.py`](../scripts/convert_dukascopy.py), [`scripts/generate_manifest.py`](../scripts/generate_manifest.py)
 
 ---
 
@@ -155,25 +156,40 @@ Prior to downloading Q1 2023 data, the complete experimental pipeline was verifi
 - Verified that the monotonic fixed-execution curve is strictly decreasing.
 - Verified that the USD/JPY pip scaling correctly scales by $100\times$ (`1.0 / 0.01`) and reports P&L in JPY.
 - Verified that Gross Directional Skill t-stat directly measures signed midpoint movement.
-- Verified rigorous **Scale Invariance** via CTest unit test: multiplying price feeds by $100\times$ under the USD/JPY configuration preserves exact signal counts, order counts, fill counts, $t$-statistics, and scales Net P&L by exactly $100.00\times$ ($19.70\text{ USD} \to 1970.00\text{ JPY}$).
-- Verified that all 120 unit tests and Python tier classification self-tests pass cleanly.
+- Verified rigorous **Scale Invariance** across both C++ engine level (`VT_TEST(Replay, ScaleInvariancePreservesSignalsStatsAndScaledPnl)`) and CLI pipeline level (`vectra_cli_scale_invariance` running `vectra.exe` on EUR/USD vs 100x USD/JPY): signal counts, order counts, fill counts, and $t$-statistics match identically, with Net P&L scaling by exactly $100.00\times$ ($19.70\text{ USD} \to 1970.00\text{ JPY}$).
+- Verified that all 120 C++ unit tests, 3/3 CTest targets, and Python tier classification self-tests pass cleanly.
 
 ---
 
 ## 8. Data Ingestion, Exclusions & Verification Hash Protocol
 
-### 8.1 Data Provenance & Tooling
+### 8.1 Data Provenance, Tooling & Dependency Pinning
 - **Source**: Public institutional tick history from Dukascopy Bank SA.
-- **Ingestion Tool**: Open-source `dukascopy-node` CLI exporting raw ticks (timestamp, bid, ask, volume) in UTC format.
-- **Period**: 2023-01-01 00:00:00 UTC to 2023-03-31 23:59:59 UTC.
+- **Ingestion Tool**: `dukascopy-node@1.51.1` (pinned in [`package.json`](../package.json)).
+- **Target Period**: `2023-01-01` to `2023-04-01` (corresponding to 2023-01-01 00:00:00 UTC through 2023-03-31 23:59:59 UTC).
+- **Execution Script**: [`scripts/download_dukascopy.py`](../scripts/download_dukascopy.py) downloads raw tick CSVs into `data/raw/`.
 
-### 8.2 Pre-Registered Exclusions
-1. **Weekend Closures**: Quotes timestamped between Friday 21:00 UTC and Sunday 21:00 UTC are discarded.
-2. **Daily Rollover Window**: Quotes between 21:00 UTC and 22:00 UTC every trading day are excluded from trade entry to eliminate artificial rollover spread spikes.
-3. **Market Hygiene Rejections**: Crossed spreads ($a_i \le b_i$), non-positive prices, timestamps out of sequence, and stale quote gaps $> 15,000\text{ ms}$ are filtered by `MarketValidator`.
+### 8.2 Pre-Registered Exclusions & Boundary Policies
+Implemented in [`scripts/convert_dukascopy.py`](../scripts/convert_dukascopy.py):
+1. **Weekend Closures**: Quotes timestamped between Friday 21:00:00 UTC and Sunday 21:00:00 UTC are discarded.
+2. **Daily Rollover Window**: Quotes between 21:00:00 UTC and 21:59:59.999 UTC (Monday through Thursday) are discarded to prevent artificial rollover spread widening from contaminating signal calculations.
+3. **Boundary Horizon & Reopening Policy**:
+   - Because the 21:00–22:00 UTC window is omitted, any open position held across the boundary will exceed its 180 s horizon during the gap.
+   - The engine's causal horizon exit automatically closes the position at the reopening tick (22:00:00 UTC) at prevailing market bid/ask.
+   - The 1-hour time step triggers `stale_gap = true` in `MarketValidator` ($> 15\text{ s}$ gap threshold), actively blocking any new order submissions until fresh quotes restore feed continuity.
+4. **Market Hygiene**: Non-positive prices, inverted spreads ($a_i < b_i$), and non-monotonic timestamps are strictly filtered. Sequence numbers are assigned contiguously ($1, 2, 3\dots$).
 
 ### 8.3 Data Integrity & SHA-256 Manifest
-Immediately upon downloading each dataset, a cryptographic manifest [`reports/data_manifest_q1_2023.json`](../reports/data_manifest_q1_2023.json) will be written containing:
-- Exact file name, byte size, and tick count.
-- `SHA-256` checksum of the raw downloaded file.
-- First and last provider timestamp in UTC.
+[`scripts/generate_manifest.py`](../scripts/generate_manifest.py) scans `data/raw/` and `data/converted/`, generating [`reports/data_manifest_q1_2023.json`](../reports/data_manifest_q1_2023.json) containing:
+- Exact file names, relative paths, and byte sizes.
+- `SHA-256` checksums for both raw downloaded archives and converted VECTRA CSV files.
+- Total line counts and tick counts.
+- Exact provider ISO-8601 start and end timestamps in UTC.
+
+### 8.4 Deterministic Execution Sequence (Epistemic Firebreak)
+To guarantee that data is never analyzed or inspected before pre-registration is sealed:
+1. **Step 1 (Acquire Data)**: Run `python scripts/download_dukascopy.py` to download Q1 2023 tick files into `data/raw/`.
+2. **Step 2 (Convert Schema)**: Run `python scripts/convert_dukascopy.py` to produce `data/converted/EURUSD_ticks.csv`, `GBPUSD_ticks.csv`, `USDJPY_ticks.csv`.
+3. **Step 3 (Cryptographic Manifest)**: Run `python scripts/generate_manifest.py` to produce `reports/data_manifest_q1_2023.json`.
+4. **Step 4 (Commit & Push Hash)**: Commit the manifest to git with tag `data-locked-q1-2023` and push to GitHub, publicly timestamping that data was sealed prior to replay.
+5. **Step 5 (Single Execution Run)**: Run `scripts/run_experiment_suite.py` once and only once across each pair to compile the final empirical findings report.

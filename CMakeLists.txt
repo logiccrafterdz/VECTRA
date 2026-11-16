@@ -76,4 +76,9 @@ if(VECTRA_BUILD_TESTS)
                    --data ${CMAKE_CURRENT_SOURCE_DIR}/examples/sample_ticks.csv
                    --report ${CMAKE_CURRENT_BINARY_DIR}/sample_report.md
            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+
+  find_package(Python3 COMPONENTS Interpreter REQUIRED)
+  add_test(NAME vectra_cli_scale_invariance
+           COMMAND Python3::Interpreter ${CMAKE_CURRENT_SOURCE_DIR}/scripts/test_cli_scale_invariance.py
+           WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
 endif()

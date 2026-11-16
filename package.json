@@ -1,0 +1,17 @@
+{
+  "name": "vectra-data-pipeline",
+  "version": "1.0.0",
+  "description": "Deterministic tick data ingestion pipeline for VECTRA empirical evaluation",
+  "private": true,
+  "scripts": {
+    "download:test": "python scripts/download_dukascopy.py --from-date 2022-12-15 --to-date 2022-12-16 --output-dir data/test_raw",
+    "convert:test": "python scripts/convert_dukascopy.py --input-dir data/test_raw --output-dir data/test_converted",
+    "manifest:test": "python scripts/generate_manifest.py --raw-dir data/test_raw --converted-dir data/test_converted --output reports/test_manifest_20221215.json",
+    "download:q1_2023": "python scripts/download_dukascopy.py --from-date 2023-01-01 --to-date 2023-04-01 --output-dir data/raw",
+    "convert:q1_2023": "python scripts/convert_dukascopy.py --input-dir data/raw --output-dir data/converted",
+    "manifest:q1_2023": "python scripts/generate_manifest.py --raw-dir data/raw --converted-dir data/converted --output reports/data_manifest_q1_2023.json"
+  },
+  "dependencies": {
+    "dukascopy-node": "1.51.1"
+  }
+}
