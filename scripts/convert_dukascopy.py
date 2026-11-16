@@ -4,22 +4,29 @@
 Target Schema:
     symbol,bid,ask,source_ts_ns,sequence
 
-Pre-Registered Filtering Rules (Protocol v1.6):
-1. Weekend Closure:
-   - Discards quotes between Friday 21:00:00 UTC and Sunday 21:00:00 UTC.
-2. Daily Rollover Window:
-   - Discards quotes between 21:00:00 UTC and 21:59:59.999 UTC (Monday through Thursday)
-     to prevent artificial rollover spread spikes from entering signal calculations.
-3. Boundary Horizon Policy:
-   - Filtering the 21:00-22:00 window leaves a 1-hour time gap.
-   - The engine causal lifecycle automatically triggers horizon exit at the reopening
-     tick (22:00:00 UTC) if a trade was held past its 180s horizon.
-   - The MarketValidator detects a gap > 15s and sets `stale_gap = true`, safely blocking
-     new order entries until the feed stabilizes.
-4. Data Hygiene:
-   - Rejects non-positive prices and crossed spreads (ask < bid).
-   - Enforces strictly monotonic timestamps (adjusts duplicates by +1 microsecond).
-   - Assigns contiguous 1-based sequence numbers.
+Pre-Registered Filtering Rules (Protocol v1.7):
+All session boundaries are defined in America/New_York local time, because the
+FX trading day rolls over at 17:00 New York: 22:00 UTC in winter (EST) and
+21:00 UTC in summer (EDT, from 2023-03-12). A fixed UTC window is wrong for part
+of Q1 2023. The US DST rule is applied explicitly (no tz database needed) and
+mirrors src/market/session.cpp exactly.
+
+1. Daily rollover blackout: discard quotes from 16:45 to 18:30 New York time,
+   every day. The 2022-12-15 dry run (outside the locked period) showed the
+   winter rollover spread spike from about 21:45 to 23:15 UTC (EUR/USD median
+   3.0 pips, GBP/USD 6.5-8.7 pips, USD/JPY up to 6.2 pips).
+2. Weekend blackout: discard quotes from Friday 16:45 to Sunday 18:30 New York
+   time (market close to 90 minutes after the Sunday reopen).
+3. Boundary policy (enforced by the engine, "backtest" config section):
+   - no entry is opened within 5 minutes of a blackout start;
+   - any open position is flattened 2 minutes before a blackout start;
+   - forward returns are scored on the quote prevailing at the target time
+     (eval_asof_target), and horizons that touch a blackout are dropped and
+     counted in the report.
+4. Data hygiene:
+   - rejects non-positive prices and crossed quotes (ask < bid);
+   - enforces strictly increasing timestamps (ties bumped by +1 microsecond);
+   - assigns contiguous 1-based sequence numbers.
 """
 
 import argparse
@@ -30,23 +37,43 @@ import sys
 from typing import Dict, Any, Tuple
 
 
+BLACKOUT_NY_START_MIN = 16 * 60 + 45   # 16:45 New York
+BLACKOUT_NY_END_MIN = 18 * 60 + 30     # 18:30 New York
+
+
+def _nth_sunday(year: int, month: int, n: int) -> datetime.date:
+    first = datetime.date(year, month, 1)
+    offset = (6 - first.weekday()) % 7
+    return first + datetime.timedelta(days=offset + 7 * (n - 1))
+
+
+def new_york_offset_hours(dt_utc: datetime.datetime) -> int:
+    """UTC offset of America/New_York under the US rule in force since 2007.
+
+    DST starts 07:00 UTC on the second Sunday of March and ends 06:00 UTC on the
+    first Sunday of November: -4 h (EDT) inside, -5 h (EST) outside.
+    """
+    y = dt_utc.year
+    start = datetime.datetime.combine(_nth_sunday(y, 3, 2), datetime.time(7),
+                                      tzinfo=datetime.timezone.utc)
+    end = datetime.datetime.combine(_nth_sunday(y, 11, 1), datetime.time(6),
+                                    tzinfo=datetime.timezone.utc)
+    return -4 if start <= dt_utc < end else -5
+
+
 def is_excluded_time(dt_utc: datetime.datetime) -> Tuple[bool, str]:
-    """Checks whether a UTC timestamp falls within pre-registered exclusion periods."""
-    weekday = dt_utc.weekday()  # Monday=0 ... Sunday=6
-    hour = dt_utc.hour
-
-    # 1. Weekend filter: Friday 21:00 UTC to Sunday 21:00 UTC
-    if weekday == 4 and hour >= 21:
-        return True, "weekend_friday_post_21"
-    if weekday == 5:
+    """Checks whether a UTC timestamp falls within the pre-registered New York blackout."""
+    local = dt_utc + datetime.timedelta(hours=new_york_offset_hours(dt_utc))
+    wd = local.weekday()  # Monday=0 ... Sunday=6
+    m = local.hour * 60 + local.minute
+    if wd == 5:
         return True, "weekend_saturday"
-    if weekday == 6 and hour < 21:
-        return True, "weekend_sunday_pre_21"
-
-    # 2. Daily rollover window: 21:00 to 22:00 UTC
-    if hour == 21:
-        return True, "daily_rollover_21_to_22"
-
+    if wd == 4 and m >= BLACKOUT_NY_START_MIN:
+        return True, "weekend_friday_close"
+    if wd == 6 and m < BLACKOUT_NY_END_MIN:
+        return True, "weekend_sunday_reopen"
+    if BLACKOUT_NY_START_MIN <= m < BLACKOUT_NY_END_MIN:
+        return True, "daily_rollover_ny"
     return False, ""
 
 

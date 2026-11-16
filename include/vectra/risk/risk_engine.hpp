@@ -64,6 +64,7 @@ enum class RejectReason {
   MaxOpenOrders,
   MaxOrdersPerDay,
   Cooldown,
+  SessionBlackout,   // entry too close to (or inside) the session blackout
 };
 
 const char* to_string(RejectReason r);

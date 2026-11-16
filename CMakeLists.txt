@@ -28,6 +28,7 @@ add_library(vectra_core STATIC
   src/market/market_event.cpp
   src/market/validator.cpp
   src/market/csv_reader.cpp
+  src/market/session.cpp
   src/behavior/behavior_engine.cpp
   src/behavior/exhaustion.cpp
   src/prediction/scoring_predictor.cpp
@@ -64,6 +65,7 @@ if(VECTRA_BUILD_TESTS)
     tests/test_backtest.cpp
     tests/test_telemetry.cpp
     tests/test_config.cpp
+    tests/test_session.cpp
   )
   target_link_libraries(vectra_tests PRIVATE vectra_core)
   target_include_directories(vectra_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/tests)
@@ -80,5 +82,8 @@ if(VECTRA_BUILD_TESTS)
   find_package(Python3 COMPONENTS Interpreter REQUIRED)
   add_test(NAME vectra_cli_scale_invariance
            COMMAND Python3::Interpreter ${CMAKE_CURRENT_SOURCE_DIR}/scripts/test_cli_scale_invariance.py
+           WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+  add_test(NAME vectra_session_calendar
+           COMMAND Python3::Interpreter ${CMAKE_CURRENT_SOURCE_DIR}/scripts/test_session_calendar.py
            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
 endif()

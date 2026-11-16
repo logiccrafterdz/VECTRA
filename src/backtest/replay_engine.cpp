@@ -1,5 +1,6 @@
 // Event-driven replay engine implementation.
 #include "vectra/backtest/replay_engine.hpp"
+#include "vectra/market/session.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -280,9 +281,32 @@ void ReplayEngine::evaluate_matured_signals(std::uint64_t current_event_index,
     const PendingSignalEval item = pending_signal_evals_.front();
     pending_signal_evals_.pop_front();
 
-    const double signed_mid = item.direction * (mid - item.entry_mid);
-    const double net_spread =
-        item.direction >= 0.0 ? (bid - item.entry_ask) : (item.entry_bid - ask);
+    // A horizon that touches a session blackout has no observable price path
+    // (the blackout quotes are removed upstream): drop it and count it.
+    if (use_time_horizon && config_.session_blackout &&
+        blackout_between(item.target_time_ns - config_.eval_horizon_ns, item.target_time_ns)) {
+      ++stats_.blackout_evals_dropped;
+      if (!item.is_baseline) {
+        ++stats_.blackout_signal_evals_dropped;
+      }
+      continue;
+    }
+
+    // As-of evaluation: the price at the target time is the last quote at or
+    // before it, not the first quote after a quiet spell.
+    double eval_mid = mid;
+    double eval_bid = bid;
+    double eval_ask = ask;
+    if (use_time_horizon && config_.eval_asof_target && current_time_ns > item.target_time_ns &&
+        prev_eval_quote_.valid && prev_eval_quote_.time_ns <= item.target_time_ns) {
+      eval_mid = prev_eval_quote_.mid;
+      eval_bid = prev_eval_quote_.bid;
+      eval_ask = prev_eval_quote_.ask;
+    }
+
+    const double signed_mid = item.direction * (eval_mid - item.entry_mid);
+    const double net_spread = item.direction >= 0.0 ? (eval_bid - item.entry_ask)
+                                                    : (item.entry_bid - eval_ask);
 
     if (item.is_baseline) {
       accumulate(stats_.forward_baseline, signed_mid, net_spread, item.non_overlapping_kind);
@@ -313,6 +337,26 @@ void ReplayEngine::evaluate_matured_signals(std::uint64_t current_event_index,
       update_cal(stats_.calibration_bins[bin_idx]);
     }
   }
+
+  prev_eval_quote_.time_ns = current_time_ns;
+  prev_eval_quote_.mid = mid;
+  prev_eval_quote_.bid = bid;
+  prev_eval_quote_.ask = ask;
+  prev_eval_quote_.valid = true;
+}
+
+bool ReplayEngine::blackout_between(std::int64_t from_ns, std::int64_t to_ns) const {
+  // Blackout windows last at least 105 minutes, so probing every 15 minutes
+  // plus both end points cannot step over one.
+  constexpr std::int64_t kProbeNs = 15LL * 60LL * 1'000'000'000LL;
+  const int start = config_.blackout_ny_start_min;
+  const int end = config_.blackout_ny_end_min;
+  for (std::int64_t t = from_ns; t < to_ns; t += kProbeNs) {
+    if (market::in_new_york_blackout(t, start, end)) {
+      return true;
+    }
+  }
+  return market::in_new_york_blackout(to_ns, start, end);
 }
 
 ReplayStats ReplayEngine::run(std::istream& input, const std::string& source_name) {
@@ -384,8 +428,13 @@ ReplayStats ReplayEngine::run(std::istream& input, const std::string& source_nam
                 config_.hold_horizon_ns > 0 && position_opened_time_ns_ > 0 &&
                 (event.source_time_ns - position_opened_time_ns_) >= config_.hold_horizon_ns;
             const bool horizon_hit = horizon_events_hit || horizon_time_hit;
+            const bool session_hit =
+                config_.session_blackout &&
+                market::in_new_york_blackout(
+                    event.source_time_ns + config_.blackout_flatten_lead_ns,
+                    config_.blackout_ny_start_min, config_.blackout_ny_end_min);
 
-            if (sl_hit || tp_hit || horizon_hit) {
+            if (sl_hit || tp_hit || horizon_hit || session_hit) {
               ++request_counter_;
               execution::OrderRequest exit_req;
               exit_req.client_order_id = "EXIT-" + std::to_string(stats_.events_valid) + "-" +
@@ -401,6 +450,8 @@ ReplayStats ReplayEngine::run(std::istream& input, const std::string& source_nam
                 ++stats_.stop_loss_exits_submitted;
               } else if (tp_hit) {
                 ++stats_.take_profit_exits_submitted;
+              } else if (session_hit && !horizon_hit) {
+                ++stats_.session_exits_submitted;
               } else {
                 ++stats_.horizon_exits_submitted;
               }
@@ -547,6 +598,16 @@ ReplayStats ReplayEngine::run(std::istream& input, const std::string& source_nam
           telemetry::Stopwatch timer;
           decision = risk_.evaluate(prediction, event, event.source_time_ns);
           decision_latency_.record(timer.elapsed_ns());
+        }
+        if (decision.allowed() && config_.session_blackout &&
+            (market::in_new_york_blackout(event.source_time_ns, config_.blackout_ny_start_min,
+                                          config_.blackout_ny_end_min) ||
+             market::in_new_york_blackout(event.source_time_ns + config_.blackout_entry_lead_ns,
+                                          config_.blackout_ny_start_min,
+                                          config_.blackout_ny_end_min))) {
+          decision.action = risk::DecisionAction::Reject;
+          decision.reason = risk::RejectReason::SessionBlackout;
+          ++stats_.session_entries_blocked;
         }
 
         if (config_.retain_tick_records) {

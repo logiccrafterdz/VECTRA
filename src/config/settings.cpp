@@ -175,6 +175,14 @@ void apply_backtest(const Json& root, backtest::ReplayConfig* replay) {
       b->get_number("take_profit_price", replay->take_profit_price);
   replay->retain_tick_records =
       b->get_bool("retain_tick_records", replay->retain_tick_records);
+  replay->eval_asof_target = b->get_bool("eval_asof_target", replay->eval_asof_target);
+  replay->session_blackout = b->get_bool("session_blackout", replay->session_blackout);
+  replay->blackout_ny_start_min = static_cast<int>(b->get_size(
+      "blackout_ny_start_min", static_cast<std::size_t>(replay->blackout_ny_start_min)));
+  replay->blackout_ny_end_min = static_cast<int>(b->get_size(
+      "blackout_ny_end_min", static_cast<std::size_t>(replay->blackout_ny_end_min)));
+  replay->blackout_entry_lead_ns = ms_to_ns(b, "blackout_entry_lead_ms", 0);
+  replay->blackout_flatten_lead_ns = ms_to_ns(b, "blackout_flatten_lead_ms", 0);
 }
 
 void apply_telemetry(const Json& root, backtest::ReplayConfig* replay) {

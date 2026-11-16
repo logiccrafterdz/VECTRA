@@ -59,6 +59,24 @@ struct ReplayConfig {
   double stop_loss_price = 0.0;
   double take_profit_price = 0.0;
 
+  // Forward-return evaluation timing. false (legacy): a matured signal is
+  // scored on the first quote at or after its target time, which can be far
+  // later after a quiet spell. true: it is scored on the quote prevailing at
+  // the target time (the last quote at or before it), so the horizon is exactly
+  // eval_horizon_ns. With session_blackout enabled, evaluations whose horizon
+  // touches a blackout window are dropped and counted instead.
+  bool eval_asof_target = false;
+
+  // Session blackout calendar (New York local time, see market/session.hpp).
+  // When enabled, no entry is opened if the blackout starts within
+  // blackout_entry_lead_ns, and any open position is flattened once the
+  // blackout starts within blackout_flatten_lead_ns.
+  bool session_blackout = false;
+  int blackout_ny_start_min = 16 * 60 + 45;
+  int blackout_ny_end_min = 18 * 60 + 30;
+  std::int64_t blackout_entry_lead_ns = 0;
+  std::int64_t blackout_flatten_lead_ns = 0;
+
   // Memory control: when false, SignalRecord / DecisionRecord vectors are not
   // retained in memory (digest is still computed on the fly).
   bool retain_tick_records = true;
@@ -237,6 +255,10 @@ struct ReplayStats {
   std::size_t horizon_exits_submitted = 0;
   std::size_t stop_loss_exits_submitted = 0;
   std::size_t take_profit_exits_submitted = 0;
+  std::size_t session_exits_submitted = 0;
+  std::size_t session_entries_blocked = 0;
+  std::size_t blackout_evals_dropped = 0;          // all evaluations, baseline included
+  std::size_t blackout_signal_evals_dropped = 0;   // model signals only
 
   // --- performance (P&L in quote currency) ---
   double initial_equity = 0.0;
@@ -326,6 +348,17 @@ class ReplayEngine {
   std::map<std::string, std::int64_t> submit_times_;
   std::int64_t stream_time_ns_ = 0;
   bool has_stream_time_ = false;
+
+  // Previous valid quote, used for as-of-target forward-return evaluation.
+  struct EvalQuote {
+    std::int64_t time_ns = 0;
+    double mid = 0.0;
+    double bid = 0.0;
+    double ask = 0.0;
+    bool valid = false;
+  };
+  EvalQuote prev_eval_quote_;
+  bool blackout_between(std::int64_t from_ns, std::int64_t to_ns) const;
   std::uint64_t request_counter_ = 0;
 
   double equity_peak_ = 0.0;

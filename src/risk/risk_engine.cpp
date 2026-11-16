@@ -31,6 +31,7 @@ const char* to_string(RejectReason r) {
     case RejectReason::MaxOpenOrders:      return "MaxOpenOrders";
     case RejectReason::MaxOrdersPerDay:    return "MaxOrdersPerDay";
     case RejectReason::Cooldown:           return "Cooldown";
+    case RejectReason::SessionBlackout:    return "SessionBlackout";
   }
   return "Unknown";
 }

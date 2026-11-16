@@ -99,3 +99,6 @@ log/
 Thumbs.db
 ehthumbs.db
 desktop.ini
+
+# Downloaded / converted market data (only the SHA-256 manifest is committed)
+data/

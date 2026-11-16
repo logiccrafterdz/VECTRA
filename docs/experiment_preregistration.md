@@ -1,7 +1,7 @@
-# VECTRA Large-Scale Empirical Pre-Registration & Falsification Protocol (v1.6)
+# VECTRA Large-Scale Empirical Pre-Registration & Falsification Protocol (v1.7)
 
 **Status**: Pre-Registered & Locked Prior to Data Acquisition  
-**Git Tag**: `prereg-v1.6`  
+**Git Tag**: `prereg-v1.7`  
 **Target Evaluation Period**: 2023-01-01 00:00:00 UTC to 2023-03-31 23:59:59 UTC (Q1 2023, 3 full calendar months)  
 **Target Instruments**: `EURUSD`, `GBPUSD`, `USDJPY`  
 **Test Harness**: [`scripts/run_experiment_suite.py`](../scripts/run_experiment_suite.py)  
@@ -157,7 +157,7 @@ Prior to downloading Q1 2023 data, the complete experimental pipeline was verifi
 - Verified that the USD/JPY pip scaling correctly scales by $100\times$ (`1.0 / 0.01`) and reports P&L in JPY.
 - Verified that Gross Directional Skill t-stat directly measures signed midpoint movement.
 - Verified rigorous **Scale Invariance** across both C++ engine level (`VT_TEST(Replay, ScaleInvariancePreservesSignalsStatsAndScaledPnl)`) and CLI pipeline level (`vectra_cli_scale_invariance` running `vectra.exe` on EUR/USD vs 100x USD/JPY): signal counts, order counts, fill counts, and $t$-statistics match identically, with Net P&L scaling by exactly $100.00\times$ ($19.70\text{ USD} \to 1970.00\text{ JPY}$).
-- Verified that all 120 C++ unit tests, 3/3 CTest targets, and Python tier classification self-tests pass cleanly.
+- Verified that all 128 C++ unit tests, 4/4 CTest targets (`vectra_unit_tests`, `vectra_sample_replay`, `vectra_cli_scale_invariance`, `vectra_session_calendar`), and Python tier classification self-tests pass cleanly.
 
 ---
 
@@ -169,15 +169,22 @@ Prior to downloading Q1 2023 data, the complete experimental pipeline was verifi
 - **Target Period**: `2023-01-01` to `2023-04-01` (corresponding to 2023-01-01 00:00:00 UTC through 2023-03-31 23:59:59 UTC).
 - **Execution Script**: [`scripts/download_dukascopy.py`](../scripts/download_dukascopy.py) downloads raw tick CSVs into `data/raw/`.
 
-### 8.2 Pre-Registered Exclusions & Boundary Policies
-Implemented in [`scripts/convert_dukascopy.py`](../scripts/convert_dukascopy.py):
-1. **Weekend Closures**: Quotes timestamped between Friday 21:00:00 UTC and Sunday 21:00:00 UTC are discarded.
-2. **Daily Rollover Window**: Quotes between 21:00:00 UTC and 21:59:59.999 UTC (Monday through Thursday) are discarded to prevent artificial rollover spread widening from contaminating signal calculations.
-3. **Boundary Horizon & Reopening Policy**:
-   - Because the 21:00–22:00 UTC window is omitted, any open position held across the boundary will exceed its 180 s horizon during the gap.
-   - The engine's causal horizon exit automatically closes the position at the reopening tick (22:00:00 UTC) at prevailing market bid/ask.
-   - The 1-hour time step triggers `stale_gap = true` in `MarketValidator` ($> 15\text{ s}$ gap threshold), actively blocking any new order submissions until fresh quotes restore feed continuity.
-4. **Market Hygiene**: Non-positive prices, inverted spreads ($a_i < b_i$), and non-monotonic timestamps are strictly filtered. Sequence numbers are assigned contiguously ($1, 2, 3\dots$).
+### 8.2 Pre-Registered Session Calendar & Blackout Specifications
+Both the conversion script [`scripts/convert_dukascopy.py`](../scripts/convert_dukascopy.py) and the C++ engine [`src/market/session.cpp`](../src/market/session.cpp) implement identical session calendar rules anchored to New York civil time (`America/New_York`) with explicit US Daylight Saving Time (DST starts 2nd Sunday of March 02:00 EST / 07:00 UTC, ends 1st Sunday of November 02:00 EDT / 06:00 UTC):
+1. **Daily Rollover Blackout**:
+   - Runs daily from 16:45 NY to 18:30 NY (minute-of-day 1005 through 1110).
+   - In UTC: 21:45 to 23:30 during winter (EST, UTC-5); 20:45 to 22:30 during summer (EDT, UTC-4).
+2. **Weekend Blackout**:
+   - Runs continuously from Friday 16:45 NY until Sunday 18:30 NY (23:30 UTC winter / 22:30 UTC summer).
+3. **Pre-Blackout Entry Gate**:
+   - New order submissions are blocked starting 5 minutes prior to rollover start (16:40 NY, `blackout_entry_lead_ms = 300000`).
+4. **Pre-Blackout Position Flattening**:
+   - Any open position is forcefully closed 2 minutes prior to rollover start (16:43 NY, `blackout_flatten_lead_ms = 120000`) to guarantee no overnight/rollover risk is carried across illiquid hours.
+5. **Horizon As-Of Evaluation Policy**:
+   - Forward evaluations score the price prevailing at the target timestamp ($t + 180\text{ s}$). If the 180 s holding horizon touches or crosses a blackout window, the evaluation is cleanly dropped from the non-overlapping forward statistics to prevent synthetic gap distortion.
+6. **Market Hygiene & Synthetic Data Anchor**:
+   - Non-positive prices, inverted spreads ($a_i < b_i$), and non-monotonic timestamps are strictly filtered. Sequence numbers are assigned contiguously ($1, 2, 3\dots$).
+   - The reference synthetic USD/JPY dataset ([`examples/sample_ticks_usdjpy.csv`](../examples/sample_ticks_usdjpy.csv)) is anchored to Monday 2026-01-05 10:00:00 UTC (05:00 EST), falling inside active session trading hours and executing orders without weekend blackout interference.
 
 ### 8.3 Data Integrity & SHA-256 Manifest
 [`scripts/generate_manifest.py`](../scripts/generate_manifest.py) scans `data/raw/` and `data/converted/`, generating [`reports/data_manifest_q1_2023.json`](../reports/data_manifest_q1_2023.json) containing:

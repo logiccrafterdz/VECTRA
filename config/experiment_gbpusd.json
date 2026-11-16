@@ -1,5 +1,5 @@
 {
-  "_comment": "VECTRA Experiment v1.2 Pre-Registered Config - GBPUSD (pip_size = 0.0001, baseline round-trip friction = 0.30 pips: commission = 0.05 pips/leg, slippage = 0.10 pips/leg). Locked prior to data download.",
+  "_comment": "VECTRA Experiment v1.2 Pre-Registered Config (v1.7 session calendar) - GBPUSD (pip_size = 0.0001, baseline round-trip friction = 0.30 pips: commission = 0.05 pips/leg, slippage = 0.10 pips/leg). Locked prior to data download.",
   "instrument": "GBPUSD",
   "validation": {
     "max_spread": 0.0004,
@@ -91,6 +91,12 @@
     "eval_horizon_ms": 180000,
     "stop_loss_price": 0.0008,
     "take_profit_price": 0.0012,
-    "retain_tick_records": true
+    "retain_tick_records": true,
+    "eval_asof_target": true,
+    "session_blackout": true,
+    "blackout_ny_start_min": 1005,
+    "blackout_ny_end_min": 1110,
+    "blackout_entry_lead_ms": 300000,
+    "blackout_flatten_lead_ms": 120000
   }
 }

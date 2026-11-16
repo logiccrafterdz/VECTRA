@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Automated runner for VECTRA Empirical Experiment Suite (Pre-Registration Protocol v1.4).
+"""Automated runner for VECTRA Empirical Experiment Suite (Pre-Registration Protocol v1.7).
 
 Executes:
 1. Primary Hypothesis H1 on holdout dataset at 0.30 pips baseline friction.
@@ -31,7 +31,7 @@ if not CLI_PATH.exists():
 
 
 def classify_tier(t_stat: float, mean_pips: float, net_pnl: float) -> str:
-    """Classifies outcome into Tier 1, Tier 2, or Tier 3 according to pre-registration v1.4."""
+    """Classifies outcome into Tier 1, Tier 2, or Tier 3 according to pre-registration v1.7."""
     if t_stat > 1.96 and mean_pips >= 0.15 and net_pnl > 0.0:
         return "Tier 1: Confirmed Edge"
     elif t_stat <= 0.0 or mean_pips <= 0.0 or net_pnl <= 0.0:
@@ -171,7 +171,7 @@ def run_full_suite(data_path: str, config_path: str, output_md: str) -> None:
     quote_currency = "JPY" if "jpy" in instrument.lower() else "USD"
     order_units = cfg_json.get("risk", {}).get("order_units", 10000.0)
 
-    print(f"=== Running Pre-Registered Experiment Suite v1.4 ===")
+    print(f"=== Running Pre-Registered Experiment Suite v1.7 ===")
     print(f"Data:           {data_path}")
     print(f"Config:         {config_path} (Instrument: {instrument}, pip_size: {pip_size}, quote: {quote_currency})")
     
@@ -251,7 +251,7 @@ def run_full_suite(data_path: str, config_path: str, output_md: str) -> None:
 
     # Generate Markdown Report
     lines = [
-        "# VECTRA Empirical Experiment Results (Protocol v1.4)",
+        "# VECTRA Empirical Experiment Results (Protocol v1.7)",
         "",
         f"- **Dataset**: `{data_path}`",
         f"- **Configuration**: `{config_path}` (`{instrument}`, `pip_size = {pip_size}`, `quote = {quote_currency}`)",

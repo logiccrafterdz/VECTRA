@@ -174,6 +174,14 @@ void write_markdown_report(std::ostream& out, const ReplayEngine& engine,
     write_block_row("All usable signals", s.forward_all);
     write_block_row("Naive directional baseline", s.forward_baseline);
     out << "\n";
+    if (cfg.eval_asof_target) {
+      out << "Horizons are scored on the quote prevailing at the target time (as-of).\n\n";
+    }
+    if (cfg.session_blackout) {
+      out << "Evaluations dropped because the horizon touches a session blackout: "
+          << s.blackout_signal_evals_dropped << " model signals, " << s.blackout_evals_dropped
+          << " in total (baseline included).\n\n";
+    }
 
     if (s.calibration_total.count > 0) {
       out << "#### Score reliability & Brier calibration (usable signals)\n\n";
@@ -237,6 +245,10 @@ void write_markdown_report(std::ostream& out, const ReplayEngine& engine,
   }
   if (s.take_profit_exits_submitted > 0) {
     out << "| Take-profit exits submitted | " << s.take_profit_exits_submitted << " |\n";
+  }
+  if (cfg.session_blackout) {
+    out << "| Session pre-blackout exits submitted | " << s.session_exits_submitted << " |\n";
+    out << "| Entries blocked by session blackout | " << s.session_entries_blocked << " |\n";
   }
   out << "| Reconciliation | "
       << (s.reconciliation.matched ? "matched" : "MISMATCH")
