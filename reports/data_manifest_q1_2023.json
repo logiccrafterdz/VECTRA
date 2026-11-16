@@ -1,0 +1,70 @@
+{
+  "protocol_version": "v1.7",
+  "generated_at_utc": "2026-11-16T20:32:01.404879+00:00",
+  "provider": "Dukascopy Bank SA",
+  "download_tool": "dukascopy-node@1.51.1",
+  "raw_datasets": {
+    "EURUSD": {
+      "file_name": "eurusd-tick-2023-01-01-2023-04-01.csv",
+      "relative_path": "data/raw/eurusd-tick-2023-01-01-2023-04-01.csv",
+      "sha256": "9dbf7a916841e6bec7455256c9e05e836334a5fd5164266ee587d4014b9cd03e",
+      "byte_size": 350349731,
+      "total_lines": 9040836,
+      "tick_count": 9040835,
+      "first_timestamp_utc": "2023-01-01T22:04:01.067000+00:00",
+      "last_timestamp_utc": "2023-03-31T20:59:56.463000+00:00"
+    },
+    "GBPUSD": {
+      "file_name": "gbpusd-tick-2023-01-01-2023-04-01.csv",
+      "relative_path": "data/raw/gbpusd-tick-2023-01-01-2023-04-01.csv",
+      "sha256": "88d11f3d3741b78764b162cfe5d4adb778625253a75031e80cc9bdf5fc42d20f",
+      "byte_size": 392925986,
+      "total_lines": 10143620,
+      "tick_count": 10143619,
+      "first_timestamp_utc": "2023-01-01T23:04:23.944000+00:00",
+      "last_timestamp_utc": "2023-03-31T20:59:57.104000+00:00"
+    },
+    "USDJPY": {
+      "file_name": "usdjpy-tick-2023-01-01-2023-04-01.csv",
+      "relative_path": "data/raw/usdjpy-tick-2023-01-01-2023-04-01.csv",
+      "sha256": "d318f13151218989f4d4bad80b2516acdec6a38fed9fe24810921bd35b27da23",
+      "byte_size": 549606693,
+      "total_lines": 14333326,
+      "tick_count": 14333325,
+      "first_timestamp_utc": "2023-01-01T22:00:00.064000+00:00",
+      "last_timestamp_utc": "2023-03-31T20:59:56.177000+00:00"
+    }
+  },
+  "converted_datasets": {
+    "EURUSD": {
+      "file_name": "EURUSD_ticks.csv",
+      "relative_path": "data/converted/EURUSD_ticks.csv",
+      "sha256": "8cc37d79a6e82d1b8f0ed905369551b72587fdd7f2e4bebcc9223822d5e11447",
+      "byte_size": 455789950,
+      "total_lines": 8786559,
+      "tick_count": 8786558,
+      "first_timestamp_utc": "2023-01-01T23:30:00.047000+00:00",
+      "last_timestamp_utc": "2023-03-31T20:44:59.874000+00:00"
+    },
+    "GBPUSD": {
+      "file_name": "GBPUSD_ticks.csv",
+      "relative_path": "data/converted/GBPUSD_ticks.csv",
+      "sha256": "08a560f480cecabe30a387b9041a28e5550a00583945975d62bbcc1a12c5702d",
+      "byte_size": 507932638,
+      "total_lines": 9789303,
+      "tick_count": 9789302,
+      "first_timestamp_utc": "2023-01-01T23:30:00.273000+00:00",
+      "last_timestamp_utc": "2023-03-31T20:44:59.418000+00:00"
+    },
+    "USDJPY": {
+      "file_name": "USDJPY_ticks.csv",
+      "relative_path": "data/converted/USDJPY_ticks.csv",
+      "sha256": "abf701480478e769212cf6b391a36698b569ac99b08f0b47ac2e153f78c2038d",
+      "byte_size": 723044882,
+      "total_lines": 13852000,
+      "tick_count": 13851999,
+      "first_timestamp_utc": "2023-01-01T23:30:20.590000+00:00",
+      "last_timestamp_utc": "2023-03-31T20:44:59.143000+00:00"
+    }
+  }
+}

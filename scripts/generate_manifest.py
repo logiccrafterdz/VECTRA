@@ -92,7 +92,7 @@ def main() -> int:
     out_file.parent.mkdir(parents=True, exist_ok=True)
 
     manifest: Dict[str, Any] = {
-        "protocol_version": "v1.6",
+        "protocol_version": "v1.7",
         "generated_at_utc": datetime.datetime.now(datetime.timezone.utc).isoformat(),
         "provider": "Dukascopy Bank SA",
         "download_tool": "dukascopy-node@1.51.1",
